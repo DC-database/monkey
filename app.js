@@ -236,17 +236,9 @@
     hideSidebar();
   });
   document.getElementById('menuAdminUsers').addEventListener('click', ()=>{
-    if(requireAdminOrModal('page-admin-users'))         setActivePage('page-admin-users');
-        hideSidebar();
-        // Ensure the Add/Update User details panel is open and focused when editing
-        const userDetails = document.querySelector('#page-admin-users details');
-        if (userDetails) {
-          userDetails.open = true;
-          // Focus first input for quick editing
-          const firstInput = userDetails.querySelector('input, select, textarea, button');
-          if (firstInput && firstInput.focus) firstInput.focus();
-        }
-});
+    if(requireAdminOrModal('page-admin-users')) setActivePage('page-admin-users');
+    hideSidebar();
+  });
   document.getElementById('menuSettings').addEventListener('click', ()=>{ setActivePage('page-settings'); hideSidebar(); });
 
   function updateAdminState(){
@@ -370,7 +362,7 @@
     const add = parseFloat(peAdditional.value||'0')||0;
     const pay = parseFloat(pePayment.value||'0')||0;
     const bal = credit + add - pay;
-    peBalance.value = money(bal);
+    peBalance.value = (+bal).toFixed(2);
   }
 
   ['input','change'].forEach(evt => {
@@ -406,7 +398,7 @@
       additional: +(peAdditional.value||0),
       payment: +(pePayment.value||0),
       misc: +(peMisc.value||0),
-      balance: +(peBalance.value||0),
+      balance: ((+peCredit.value||0) + (+peAdditional.value||0) - (+pePayment.value||0)),
       notes: peNotes.value||'',
       ts: Date.now(),
       initial: +(peCredit.value||0) // legacy
@@ -425,7 +417,7 @@
       additional: +(peAdditional.value||0),
       payment: +(pePayment.value||0),
       misc: +(peMisc.value||0),
-      balance: +(peBalance.value||0),
+      balance: ((+peCredit.value||0) + (+peAdditional.value||0) - (+pePayment.value||0)),
       notes: peNotes.value||'',
       ts: Date.now(),
       initial: +(peCredit.value||0) // legacy
@@ -451,13 +443,13 @@
     refs.accounts.child(key).child('entries').child(rowKey).once('value').then(s=>{
       const v = s.val()||{};
       const credit = ('credit' in v) ? v.credit : (v.initial || 0);
-      peCredit.value = money(credit||0);
+      peCredit.value = (+credit || 0).toFixed(2);
       peCredit.readOnly = true; // keep credit locked to maintain history logic
       peCredit.placeholder = 'credit locked (from history)';
-      peAdditional.value = v.additional || '';
-      pePayment.value = v.payment || '';
+      peAdditional.value = (v.additional ?? '').toString();
+      pePayment.value = (v.payment ?? '').toString();
       peMisc.value = v.misc || '';
-      peBalance.value = money(v.balance||0);
+      peBalance.value = (+v.balance || 0).toFixed(2);
       peNotes.value = v.notes || '';
       selectedPaymentKey = rowKey;
       btnUpdateEntry.disabled = false;

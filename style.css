@@ -144,7 +144,7 @@ table{width:100%;border-collapse:collapse;color:var(--text-on-dark)}
 th,td{border-bottom:1px solid var(--step-table-border);padding:.6rem .7rem;text-align:left;white-space:nowrap}
 thead th{position:sticky;top:0;background:var(--step-table-header);color:var(--text-on-dark)}
 tfoot td{background:#07171f;font-weight:700;border-top:1px solid var(--step-table-border)}
-tbody /* tr:hover{background:#0c1e28} removed */
+tbody tr:hover{background:#0c1e28}
 tbody tr.active{outline:2px solid var(--accent);background:#0e2632}
 
 .pill{padding:.25rem .5rem;border-radius:999px;border:1px solid var(--card-border);font-size:12px;background:rgba(255,255,255,.12);color:var(--text-on-light)}
