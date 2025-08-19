@@ -236,9 +236,17 @@
     hideSidebar();
   });
   document.getElementById('menuAdminUsers').addEventListener('click', ()=>{
-    if(requireAdminOrModal('page-admin-users')) setActivePage('page-admin-users');
-    hideSidebar();
-  });
+    if(requireAdminOrModal('page-admin-users'))         setActivePage('page-admin-users');
+        hideSidebar();
+        // Ensure the Add/Update User details panel is open and focused when editing
+        const userDetails = document.querySelector('#page-admin-users details');
+        if (userDetails) {
+          userDetails.open = true;
+          // Focus first input for quick editing
+          const firstInput = userDetails.querySelector('input, select, textarea, button');
+          if (firstInput && firstInput.focus) firstInput.focus();
+        }
+});
   document.getElementById('menuSettings').addEventListener('click', ()=>{ setActivePage('page-settings'); hideSidebar(); });
 
   function updateAdminState(){
