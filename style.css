@@ -392,3 +392,19 @@ tbody td {
   color: #0f172a !important;
   font-weight: 700;
 }
+
+
+/* === vBlueOrange Step-1 Readability Override === */
+.card.sub #userSearchResults,
+#userSearchResults.list,
+#userSearchResults.list .row,
+#userSearchResults.list .row *,
+#userSearchResults .meta,
+#userSearchResults strong,
+#userSearchResults .badge {
+  color: #0f172a !important;
+}
+#userSearchResults .badge {
+  background: #E6F4FF !important;
+  border-color: var(--card-border) !important;
+}
