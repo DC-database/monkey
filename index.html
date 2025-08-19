@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lending Manager</title>
+  <link rel="stylesheet" href="style.css"/>
+  <!-- Firebase SDKs (compat for simplicity) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar (overlay) -->
+    <aside id="sidebar" class="collapsed">
+      <div class="brand">
+        <span class="brand-name">Menu</span>
+      </div>
+      <nav class="menu">
+        <button class="menu-item" id="menuMyAccount" data-target="page-myaccount">Log in to My Account</button>
+        <div class="menu-group">
+          <div class="menu-item has-children"><span>Admin</span></div>
+          <div class="sub-menu">
+            <button class="menu-item" id="menuAdminPayments" data-target="page-admin-payments">Payment Entries</button>
+            <button class="menu-item" id="menuAdminUsers" data-target="page-admin-users">Users</button>
+          </div>
+        </div>
+        <button class="menu-item" id="menuSettings" data-target="page-settings">Settings</button>
+      </nav>
+      <footer class="sidebar-footer">
+        <div class="sidebar-auth">
+          <div><small>Admin Auth:</small><span id="adminAuthState" class="pill danger">Signed out</span></div>
+          <div class="btn-row"><button id="btnAdminLogout" class="ghost small">Logout</button></div>
+        </div>
+        <hr class="hr"/>
+        <div class="sidebar-auth">
+          <div><small>My Account:</small><span id="accountAuthState" class="pill danger">Signed out</span></div>
+          <div class="btn-row"><button id="btnAccountLogout" class="ghost small">Logout</button></div>
+        </div>
+      </footer>
+    </aside>
+
+    <!-- Main content -->
+    <main id="content">
+      <header class="topbar">
+        <button id="btnHamburgerTop" class="ghost" aria-label="Toggle menu">☰</button>
+        <div class="spacer"></div>
+        <span class="status-dot" id="statusDot" title="Database status"></span>
+      </header>
+
+      <!-- Pages -->
+      <section id="page-myaccount" class="page">
+        <div class="card">
+          <div class="flex-row between">
+            <h2>My Account</h2>
+            <span class="pill ok" id="myAccountWelcome" style="display:none">Welcome</span>
+          </div>
+          <div class="grid grid-3 gap">
+            <div><label>Account ID</label><input id="myAccountId" type="text" readonly /></div>
+            <div><label>Account Name</label><input id="myAccountName" type="text" readonly /></div>
+            <div><label>Email</label><input id="myAccountEmail" type="text" readonly /></div>
+          </div>
+          <div class="table-actions"><button id="btnRefreshMyEntries" class="primary">Refresh Entries</button></div>
+<div id="myStats" class="stat-cards">
+  <div class="stat">
+    <div class="stat-label">Total Additional</div>
+    <div class="stat-value" id="mStatAdd">QAR 0.00</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Total Payment</div>
+    <div class="stat-value" id="mStatPay">QAR 0.00</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Current Balance</div>
+    <div class="stat-value" id="mStatBal">QAR 0.00</div>
+  </div>
+</div>
+
+          <div class="table-wrap">
+            <table id="myEntriesTable">
+              <thead>
+                <tr><th>#</th><th>Credit</th><th>Additional</th><th>Payment</th><th>Misc</th><th>Balance</th><th>Notes</th></tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot>
+                <tr id="myEntriesTotals"><td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td></tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-admin-payments" class="page">
+        <div class="card">
+          <div class="flex-row between">
+            <h2>Admin • Payment Entries</h2>
+            <div class="inline"><span class="badge">Balance = Credit + Additional − Payment</span></div>
+          </div>
+<div class="legend simple-explain">
+  <span class="legend-item"><b>Credit</b> = previous balance</span>
+  <span class="legend-item"><b>Additional</b> = new lending</span>
+  <span class="legend-item"><b>Payment</b> = amount received</span>
+  <span class="legend-item"><b>Balance</b> = still owed</span>
+</div>
+
+
+          <div class="steps">
+            <div class="step"><span class="step-num">1</span><span>Find a user</span></div>
+            <div class="step"><span class="step-num">2</span><span>Confirm selected account</span></div>
+            <div class="step"><span class="step-num">3</span><span>Add / update a payment entry</span></div>
+          </div>
+
+          <details class="card sub" open>
+            <summary>Step 1 — Find a User (from <code>/users</code>)</summary>
+            <div class="grid grid-3 gap">
+              <div class="col-span-2">
+                <label>Search by Account ID, Account Name, or Email</label>
+                <input id="userSearchInput" placeholder="Type to search..."/>
+              </div>
+              <div class="align-end">
+                <button id="btnClearUserSearch" class="ghost">Clear</button>
+              </div>
+            </div>
+            <div id="userSearchResults" class="list"></div>
+            <p class="muted" id="userSearchHint">Click a result to select that user's account. If it doesn't exist in <code>/accounts</code>, it will be created automatically.</p>
+          </details>
+
+          <details class="card sub" open>
+            <summary>Step 2 — Selected Account</summary>
+            <div class="grid grid-3 gap">
+              <div><label>Account ID</label><input id="accId" readonly/></div>
+              <div><label>Account Name</label><input id="accName" readonly/></div>
+              <div class="align-end">
+                <button id="btnClearSelection" class="ghost">Clear Selection</button>
+              </div>
+            </div>
+          </details>
+
+          
+<div id="adminStats" class="stat-cards">
+  <div class="stat">
+    <div class="stat-label">Total Given</div>
+    <div class="stat-value" id="statTotalAdd">QAR 0.00</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Total Collected</div>
+    <div class="stat-value" id="statTotalPay">QAR 0.00</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Current Balance</div>
+    <div class="stat-value" id="statCurrentBal">QAR 0.00</div>
+  </div>
+</div>
+<details class="card sub" open>
+            <summary>Step 3 — Add / Update Payment Entry</summary>
+            <div class="grid grid-6 gap">
+              <div><label>Credit Amount</label><input id="peCredit" type="number" step="0.01" placeholder="first entry only"/></div>
+              <div><label>Additional Amount</label><input id="peAdditional" type="number" step="0.01"/></div>
+              <div><label>Payment Made</label><input id="pePayment" type="number" step="0.01"/></div>
+              <div><label>Misc</label><input id="peMisc" type="number" step="0.01" placeholder="optional"/></div>
+              <div><label>Balance (auto)</label><input id="peBalance" type="number" step="0.01" readonly/></div>
+              <div><label>Notes</label><input id="peNotes" placeholder="optional"/></div>
+            </div>
+            <p class="muted">Rule: First entry → set <strong>Credit Amount</strong> manually. Next entries → <strong>Credit Amount</strong> auto-fills from previous <strong>Balance</strong>. Balance = Credit + Additional − Payment.</p>
+            <div class="flex-row gap">
+              <button id="btnAddEntry" class="primary">Add Entry</button>
+              <button id="btnUpdateEntry" class="primary outline" disabled>Update Selected</button>
+              <button id="btnClearEntry" class="ghost">Clear</button>
+            </div>
+          </details>
+
+          <div class="table-wrap">
+            <table id="paymentsTable">
+              <thead><tr><th>#</th><th>Credit</th><th>Additional</th><th>Payment</th><th>Misc</th><th>Balance</th><th>Notes</th><th>Action</th></tr></thead>
+              <tbody></tbody>
+              <tfoot>
+                <tr id="paymentsTotals"><td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td><td></td></tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-admin-users" class="page">
+        <div class="card">
+          <h2>Admin • Users</h2>
+          <details class="card sub">
+            <summary>Add / Update User</summary>
+            <div class="grid grid-6 gap">
+              <div><label>Account ID</label><input id="uAccId"/></div>
+              <div><label>Account Name</label><input id="uAccName"/></div>
+              <div><label>Role</label><select id="uRole"><option>admin</option><option selected>user</option></select></div>
+              <div><label>Email</label><input id="uEmail" type="email"/></div>
+              <div><label>Mobile</label><input id="uMobile" type="tel"/></div>
+              <div><label>Password</label><input id="uPassword" type="password"/></div>
+            </div>
+            <div class="flex-row gap"><button id="btnAddUser" class="primary">Add User</button><button id="btnUpdateUser" class="primary outline" disabled>Update Selected</button><button id="btnClearUser" class="ghost">Clear</button></div>
+          </details>
+          <div class="table-wrap">
+            <table id="usersTable"><thead><tr><th>#</th><th>Account ID</th><th>Account Name</th><th>Role</th><th>Email</th><th>Mobile</th><th>Password</th><th>Action</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-settings" class="page visible">
+        <div class="card"><h2>Settings</h2><p>Click <strong>My Account</strong> or <strong>Admin</strong> to log in via modal.</p></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODALS -->
+  <div id="modalBackdrop" class="modal-backdrop" hidden></div>
+
+  <!-- My Account Modal -->
+  <div id="modalMyAccount" class="modal" hidden role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header"><h3>Log in to My Account</h3><button class="modal-close" data-close="modalMyAccount">✕</button></div>
+      <div class="grid grid-3 gap">
+        <div><label>Email</label><input id="accLoginEmail" type="email" placeholder="you@example.com"/></div>
+        <div><label>Password</label><input id="accLoginPassword" type="password" placeholder="••••••••"/></div>
+        <div class="align-end"><button id="btnAccLogin" class="primary">Log in</button></div>
+      </div>
+      <p id="accLoginMsg" class="muted"></p>
+    </div>
+  </div>
+
+  <!-- Admin Auth Modal -->
+  <div id="modalAdmin" class="modal" hidden role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header"><h3>Admin Sign In</h3><button class="modal-close" data-close="modalAdmin">✕</button></div>
+      <div class="grid grid-3 gap">
+        <div><label>Email</label><input id="adminEmail" type="email" placeholder="admin@example.com"/></div>
+        <div><label>Password</label><input id="adminPassword" type="password" placeholder="••••••••"/></div>
+        <div class="align-end"><button id="btnDoAdminLogin" class="primary">Sign in</button></div>
+      </div>
+      <div class="inline gap"><button id="btnAdminCreate" class="ghost">Create Admin</button><button id="btnAdminForgot" class="ghost">Reset Password</button></div>
+      <p id="adminLoginMsg" class="muted"></p>
+    </div>
+  </div>
+
+  <script>
+    window.__FIREBASE_CONFIG__ = {
+      apiKey: "AIzaSyAn7Rq3ehuW3AEurWULg0TvRx3bMXL1wk0",
+      authDomain: "monkey-01-d1af0.firebaseapp.com",
+      projectId: "monkey-01-d1af0",
+      storageBucket: "monkey-01-d1af0.firebasestorage.app",
+      messagingSenderId: "345357612688",
+      appId: "1:345357612688:web:7215153eabff14c9834a15",
+      measurementId: "G-RLZE24P59R",
+      databaseURL: "https://monkey-01-d1af0-default-rtdb.firebaseio.com"
+    };
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>

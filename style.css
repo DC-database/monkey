@@ -1,0 +1,394 @@
+:root{
+  --step-table-bg:#4682B4;
+  --step-table-border:#2f5b7b;
+  --step-table-header:#3b6f97;
+
+  /* Dark shell */
+  --bg-outer:#ADD8E6;
+  /* Cards */
+  --card:#87CEEB;          /* requested card color */
+  --card-sub:#4682B4;      /* slightly darker than card */
+  /* Sidebar remains dark */
+  --sidebar:#4682B4;
+  --muted:#4682B4;         /* headers / topbar */
+  /* Light fields */
+  --field:#FFFFFF;
+  --field-border:#87CEEB;
+  /* Buttons (dark) */
+  --btn:#FFA500;
+  --btn-border:#cc8400;
+  /* Accents & status */
+  --accent:#FFA500;
+  --accent-2:#FFB84D;
+  --danger:#ef4444;
+  --ok:#10b981;
+  /* Text on backgrounds */
+  --text-on-dark:#FFFFFF;  /* for dark surfaces */
+  --text-on-light:#0f172a; /* for light/card surfaces */
+  /* Borders & shadow */
+  --border-dark:#3b6f97;
+  --card-border:#4682B4;
+  --shadow:0 10px 28px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%}
+body{
+  margin:0;
+  background:linear-gradient(180deg,var(--bg-outer),#0b1430);
+  color:var(--text-on-dark);
+  font:14px/1.45 system-ui,Segoe UI,Roboto,Arial,Helvetica,sans-serif
+}
+#app{display:block;height:100vh;overflow:hidden;position:relative}
+
+/* Sidebar (overlay) */
+aside#sidebar{
+  position:fixed; inset:0 auto 0 0;
+  width:280px; min-width:280px;
+  background:var(--sidebar);
+  border-right:1px solid var(--border-dark);
+  box-shadow:var(--shadow);
+  display:flex; flex-direction:column;
+  transform:translateX(0);
+  transition:transform .25s ease;
+  z-index:40; color:var(--text-on-dark)
+}
+aside#sidebar.collapsed{ transform:translateX(-100%); }
+.brand{display:flex;align-items:center;gap:.5rem;padding:1rem;border-bottom:1px solid var(--border-dark)}
+.brand-name{font-weight:700;letter-spacing:.5px;color:var(--text-on-dark)}
+.menu{display:flex;flex-direction:column;padding:.5rem}
+.menu .menu-item{
+  text-align:left;padding:.75rem .9rem;
+  background:var(--btn);color:var(--text-on-dark);
+  outline:0;border:1px solid var(--btn-border);
+  border-radius:.6rem;cursor:pointer;transition:.15s
+}
+.menu .menu-item + .menu-item{margin-top:.4rem}
+.menu .menu-item:hover{filter:brightness(1.15)}
+.menu .menu-item.active{outline:2px solid var(--accent)}
+.menu-group{margin-top:.25rem}
+.menu-item.has-children{display:flex;align-items:center;justify-content:space-between;background:transparent;border:1px dashed var(--border-dark)}
+.sub-menu{margin-left:.75rem;display:flex;flex-direction:column;gap:.35rem;margin-top:.35rem}
+.sidebar-footer{margin-top:auto;padding:1rem;border-top:1px solid var(--border-dark);color:var(--text-on-dark)}
+.sidebar-auth{display:flex;flex-direction:column;gap:.35rem}
+.btn-row{display:flex;gap:.5rem;margin-top:.35rem}
+button.small{padding:.35rem .6rem;font-size:12px}
+
+main#content{position:relative;display:flex;flex-direction:column;height:100vh;min-width:0;color:var(--text-on-dark)}
+.topbar{
+  display:flex;align-items:center;gap:1rem;padding:.75rem 1rem;
+  border-bottom:1px solid var(--border-dark);
+  background:var(--muted);
+  position:sticky;top:0;z-index:30
+}
+.topbar .spacer{flex:1}
+.ghost, button{
+  background:var(--btn);
+  border:1px solid var(--btn-border);
+  color:var(--text-on-dark);
+  padding:.45rem .7rem;border-radius:.5rem;cursor:pointer;
+  box-shadow:var(--shadow)
+}
+button.primary{background:var(--btn);border-color:var(--accent);}
+button.primary.outline{background:transparent;border-color:var(--accent);color:var(--text-on-dark)}
+button.danger{background:#7f1d1d;border-color:#b91c1c;color:#fff}
+button:hover{filter:brightness(1.12)}
+
+.status-dot{width:10px;height:10px;border-radius:50%;background:#7f1d1d;display:inline-block}
+.status-dot.ok{background:var(--ok)}
+
+.page{display:none;padding:1rem;overflow:auto;height:calc(100vh - 56px)}
+.page.visible{display:block}
+
+/* CARDS use requested color */
+.card{
+  background:var(--card);
+  border:1px solid var(--card-border);
+  border-radius:1rem;
+  padding:1rem;
+  box-shadow:var(--shadow);
+  color:var(--text-on-light)
+}
+.card.sub{margin-top:1rem;background:var(--step-table-bg);border-color:var(--step-table-border);color:var(--text-on-dark)}
+
+.grid{display:grid}
+.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid-6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.col-span-2{grid-column:span 2 / span 2}
+.gap{gap:1rem}
+.align-end{display:flex;align-items:end;gap:.5rem}
+.flex-row{display:flex;align-items:center}
+.flex-row.between{justify-content:space-between}
+.inline{display:flex;align-items:center;gap:.5rem}
+.muted{color:rgba(15,23,42,.85)}
+.hr{border:none;height:1px;background:#39566d;margin:.75rem 0}
+
+label{display:block;margin-bottom:.35rem;color:#0f172a;font-size:12px}
+
+/* LIGHT FIELDS */
+input,select{
+  width:100%;padding:.6rem .7rem;border-radius:.6rem;
+  border:1px solid var(--field-border);
+  background:var(--field);
+  color:var(--text-on-light);
+  outline:none
+}
+input::placeholder, select::placeholder{color:#667085}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,130,246,.25)}
+
+.table-actions{margin:.75rem 0;display:flex;gap:.5rem}
+
+/* Tables on card background with dark text for contrast */
+.table-wrap{overflow:auto;border:1px solid var(--step-table-border);border-radius:.8rem;background:var(--step-table-bg);box-shadow:var(--shadow);color:var(--text-on-dark)}
+table{width:100%;border-collapse:collapse;color:var(--text-on-dark)}
+th,td{border-bottom:1px solid var(--step-table-border);padding:.6rem .7rem;text-align:left;white-space:nowrap}
+thead th{position:sticky;top:0;background:var(--step-table-header);color:var(--text-on-dark)}
+tfoot td{background:#07171f;font-weight:700;border-top:1px solid var(--step-table-border)}
+tbody tr:hover{background:#0c1e28}
+tbody tr.active{outline:2px solid var(--accent);background:#0e2632}
+
+.pill{padding:.25rem .5rem;border-radius:999px;border:1px solid var(--card-border);font-size:12px;background:rgba(255,255,255,.12);color:var(--text-on-light)}
+.pill.ok{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.35);color:#064e3b}
+.pill.danger{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.35);color:#7f1d1d}
+
+/* Modals = cards */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(2px);z-index:50}
+.modal{position:fixed;inset:0;display:grid;place-items:center;z-index:60}
+.modal-card{width:min(900px,92vw);background:var(--card);border:1px solid var(--card-border);border-radius:1rem;padding:1rem;box-shadow:var(--shadow);color:var(--text-on-light)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+.modal-close{background:var(--btn);border:1px solid var(--btn-border);color:var(--text-on-dark);border-radius:.5rem;padding:.35rem .5rem;cursor:pointer}
+
+.list{margin-top:.75rem;border:1px solid var(--card-border);border-radius:.75rem;overflow:hidden;background:var(--card-sub);color:var(--text-on-light)}
+.list .row{display:flex;justify-content:space-between;gap:.75rem;padding:.6rem .75rem;border-bottom:1px solid var(--card-border);cursor:pointer}
+.list .row:hover{background:rgba(255,255,255,.10)}
+.list .row:last-child{border-bottom:none}
+.row .meta{color:rgba(15,23,42,.85);font-size:12px}
+
+.badge{padding:.1rem .35rem;border:1px solid var(--card-border);border-radius:.4rem;font-size:11px;color:var(--text-on-light);background:rgba(255,255,255,.12)}
+
+.steps{display:flex;gap:.5rem;margin:.5rem 0 1rem 0;flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:.4rem;background:var(--step-table-bg);border:1px dashed var(--step-table-border);padding:.35rem .6rem;border-radius:.6rem;font-size:12px;color:var(--text-on-dark)}
+.step-num{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:999px;background:var(--accent);color:#fff;font-weight:700}
+
+@media (max-width:1000px){.grid-3{grid-template-columns:1fr}.grid-6{grid-template-columns:repeat(2,1fr)}}
+
+/* v4.3: Force readable text on dark step cards */
+.card.sub summary,
+.card.sub h1, .card.sub h2, .card.sub h3, .card.sub h4, .card.sub h5, .card.sub h6,
+.card.sub p, .card.sub .muted, .card.sub .meta,
+.card.sub label {
+  color: var(--text-on-dark) !important;
+}
+/* Keep input/select text dark (since fields are light) */
+.card.sub input, .card.sub select, .card.sub input::placeholder, .card.sub select::placeholder {
+  color: var(--text-on-light) !important;
+}
+
+/* v4.4: Grey action buttons with contrasting text */
+:root{
+  --btn-grey:#e5e7eb;          /* light grey */
+  --btn-grey-border:#cbd5e1;   /* border grey */
+  --btn-grey-text:#0f172a;     /* dark text for contrast */
+  --btn-grey-hover:#dfe3ea;    /* hover tint */
+  --btn-grey-disabled:#eef0f4; /* disabled */
+}
+#btnClearEntry, #btnClearSelection, #btnAddEntry, #btnUpdateEntry {
+  background: var(--btn-grey) !important;
+  border-color: var(--btn-grey-border) !important;
+  color: var(--btn-grey-text) !important;
+  box-shadow: none;
+}
+#btnClearEntry:hover, #btnClearSelection:hover, #btnAddEntry:hover, #btnUpdateEntry:hover {
+  background: var(--btn-grey-hover) !important;
+}
+#btnUpdateEntry[disabled]{
+  background: var(--btn-grey-disabled) !important;
+  border-color: var(--btn-grey-border) !important;
+  color: #6b7280 !important;
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* v4.5: Action buttons use #47f5e3 with high-contrast text */
+:root{
+  --btn-cyan:#87CEEB;
+  --btn-cyan-border:#4682B4;
+  --btn-cyan-text:#0f172a;
+  --btn-cyan-hover:#ADD8E6;
+  --btn-cyan-disabled:#cfefff;
+}
+/* Payments page buttons */
+#btnClearEntry, #btnClearSelection, #btnAddEntry, #btnUpdateEntry,
+/* Users page 'Clear' for consistency */
+#btnClearUser {
+  background: var(--btn-cyan) !important;
+  border-color: var(--btn-cyan-border) !important;
+  color: var(--btn-cyan-text) !important;
+  box-shadow: none;
+}
+#btnClearEntry:hover, #btnClearSelection:hover, #btnAddEntry:hover, #btnUpdateEntry:hover, #btnClearUser:hover {
+  background: var(--btn-cyan-hover) !important;
+}
+#btnUpdateEntry[disabled]{
+  background: var(--btn-cyan-disabled) !important;
+  border-color: var(--btn-cyan-border) !important;
+  color: #3b4b50 !important;
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* v4.6: Include Step 1 'Clear' button */
+#btnClearUserSearch {
+  background: var(--btn-cyan) !important;
+  border-color: var(--btn-cyan-border) !important;
+  color: var(--btn-cyan-text) !important;
+  box-shadow: none;
+}
+#btnClearUserSearch:hover {
+  background: var(--btn-cyan-hover) !important;
+}
+
+
+/* === Readability & Contrast Enhancements (v5.0) === */
+body { font-size: 15.5px; line-height: 1.6; }
+
+/* Stat cards for quick at-a-glance numbers */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0 0.5rem 0;
+}
+.stat-cards .stat {
+  background: var(--card-sub);
+  border: 1px solid var(--card-border);
+  border-radius: 0.9rem;
+  padding: 0.8rem 1rem;
+  color: var(--text-on-light);
+  box-shadow: var(--shadow);
+}
+.stat-label { font-size: 12px; opacity: .9; }
+.stat-value { font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* Friendly legend chips */
+.legend { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 .75rem 0; }
+.legend-item {
+  background: var(--step-table-bg);
+  border: 1px dashed var(--step-table-border);
+  color: var(--text-on-dark);
+  padding: .25rem .5rem;
+  border-radius: .5rem;
+  font-size: 12px;
+}
+
+/* Zebra striping & numeric alignment */
+.table-wrap tbody tr:nth-child(even){ background: #E6F4FF; }
+#paymentsTable th:nth-child(2), #paymentsTable td:nth-child(2),
+#paymentsTable th:nth-child(3), #paymentsTable td:nth-child(3),
+#paymentsTable th:nth-child(4), #paymentsTable td:nth-child(4),
+#paymentsTable th:nth-child(5), #paymentsTable td:nth-child(5),
+#paymentsTable th:nth-child(6), #paymentsTable td:nth-child(6),
+#myEntriesTable th:nth-child(2), #myEntriesTable td:nth-child(2),
+#myEntriesTable th:nth-child(3), #myEntriesTable td:nth-child(3),
+#myEntriesTable th:nth-child(4), #myEntriesTable td:nth-child(4),
+#myEntriesTable th:nth-child(5), #myEntriesTable td:nth-child(5),
+#myEntriesTable th:nth-child(6), #myEntriesTable td:nth-child(6) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* Bigger headings */
+h2 { font-size: 1.15rem; margin: 0; }
+.card h2 { color: var(--text-on-light); }
+
+/* Tooltip-like help (use title attr) */
+.help { border-bottom: 1px dotted currentColor; cursor: help; }
+
+@media (max-width: 900px){
+  .stat-cards { grid-template-columns: 1fr; }
+}
+
+
+/* === vBlueOrange Fixes: Menu, Step 1 results, Table contrast === */
+
+/* 1) Sidebar/menu: remove 'floating' look */
+aside.sidebar, nav.menu {
+  background: var(--sidebar) !important;
+  box-shadow: none !important;
+}
+.menu .menu-item {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  width: 100%;
+  text-align: left;
+  padding: .55rem .75rem;
+}
+.menu .menu-item:hover,
+.menu .menu-item.active,
+.menu .menu-item[aria-current="page"] {
+  background: rgba(255,255,255,0.12) !important;
+  outline: none !important;
+}
+.menu .menu-item:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 0 !important;
+}
+.menu .sub-menu {
+  background: transparent !important;
+  border: none !important;
+  padding-left: .5rem;
+}
+
+/* 2) Step 1 results: distinguish clickable rows clearly */
+#userSearchResults.list {
+  background: #E9F6FF !important;
+  color: var(--text-on-light) !important;
+  border-color: var(--card-border) !important;
+}
+#userSearchResults.list .row {
+  background: #FFFFFF !important;
+  color: #0f172a !important;
+}
+#userSearchResults.list .row:hover {
+  background: #E6F4FF !important;
+  border-left: 3px solid var(--accent) !important;
+}
+
+/* 3) Payments table (Step 3): consistent light background with dark text */
+.table-wrap {
+  background: #E9F6FF !important;
+  color: #0f172a !important;
+}
+table {
+  background: #FFFFFF !important;
+  color: #0f172a !important;
+}
+thead th {
+  background: var(--step-table-header) !important;
+  color: #FFFFFF !important;
+}
+tbody td {
+  color: #0f172a !important;
+}
+/* Odd rows white, even rows gentle blue */
+#paymentsTable tbody tr:nth-child(odd),
+#myEntriesTable tbody tr:nth-child(odd) {
+  background: #FFFFFF !important;
+}
+#paymentsTable tbody tr:nth-child(even),
+#myEntriesTable tbody tr:nth-child(even) {
+  background: #F4FAFF !important;
+}
+
+/* Totals footer row stays readable */
+#paymentsTotals td,
+#myEntriesTotals td {
+  background: #FFF8E6 !important; /* faint warm tone to stand apart */
+  color: #0f172a !important;
+  font-weight: 700;
+}
