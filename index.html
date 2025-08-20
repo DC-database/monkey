@@ -34,6 +34,7 @@
           <div class="btn-row"><button id="btnAdminLogout" class="ghost small">Logout</button></div></div>
 </footer>
     </aside>
+    <div id="sidebarBackdrop" class="backdrop hidden"></div>
 
     <!-- Main content -->
     <main id="content">
@@ -75,11 +76,11 @@
     <div class="table-wrap">
       <table id="searchPaymentsTable">
         <thead>
-          <tr><th>#</th><th>Credit</th><th>Additional</th><th>Payment</th><th>Misc</th><th>Balance</th><th>Notes</th></tr>
+          <tr><th>#</th><th>Credit</th><th>Additional</th><th>Payment</th><th>Misc</th><th>Balance</th><th>Percent (%)</th><th>Date</th><th>Notes</th></tr>
         </thead>
         <tbody></tbody>
         <tfoot>
-          <tr id="searchPaymentsTotals"><td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td></tr>
+          <tr id="searchPaymentsTotals"><td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td>–</td><td></td><td></td></tr>
         </tfoot>
       </table>
     </div>
@@ -129,6 +130,14 @@
     <div class="stat-label">Current Balance</div>
     <div class="stat-value" id="statCurrentBal">QAR 0.00</div>
   </div>
+  <div class="stat">
+    <div class="stat-label">Next Collection Date</div>
+    <div class="stat-value" id="statNextDate">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Collection Amount</div>
+    <div class="stat-value" id="statNextAmount">QAR 0.00</div>
+  </div>
 </div>
 <details class="card sub" open>
             <summary>Step 3 — Add / Update Payment Entry</summary>
@@ -137,7 +146,7 @@
               <div><label>Additional Amount</label><input id="peAdditional" type="number" step="0.01"/></div>
               <div><label>Payment Made</label><input id="pePayment" type="number" step="0.01"/></div>
               <div><label>Percentage (%)</label><input id="pePercent" type="number" step="0.01" min="0" max="100" placeholder="e.g., 25"/></div>
-              <div><label>Payment Date</label><input id="peDate" placeholder="YYYY-MMM-DD-DDD"/></div>
+              <div><label>Payment Date</label><input id="peDate" type="date"/></div>
               <div><label>Misc</label><input id="peMisc" type="number" step="0.01" placeholder="optional"/></div>
               <div><label>Balance (auto)</label><input id="peBalance" type="number" step="0.01" readonly/></div>
               <div><label>Notes</label><input id="peNotes" placeholder="optional"/></div>

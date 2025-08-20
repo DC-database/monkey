@@ -9,13 +9,22 @@
   // Connectivity
   db.ref('.info/connected').on('value', snap => { statusDot.classList.toggle('ok', !!snap.val()); });
 
-  // Sidebar toggles
+  // Sidebar toggles with backdrop/safe body
   const sidebar = document.getElementById('sidebar');
   const btnHamburgerTop = document.getElementById('btnHamburgerTop');
-  function toggleSidebar(){ sidebar.classList.toggle('collapsed'); }
-  function hideSidebar(){ sidebar.classList.add('collapsed'); }
-  function showSidebar(){ sidebar.classList.remove('collapsed'); }
+  const backdrop = document.getElementById('sidebarBackdrop');
+  function syncBackdrop(){
+    const isOpen = !sidebar.classList.contains('collapsed');
+    if(backdrop){ backdrop.classList.toggle('show', isOpen); }
+    document.body.classList.toggle('sidebar-open', isOpen);
+  }
+  function toggleSidebar(){ sidebar.classList.toggle('collapsed'); syncBackdrop(); }
+  function hideSidebar(){ sidebar.classList.add('collapsed'); syncBackdrop(); }
+  function showSidebar(){ sidebar.classList.remove('collapsed'); syncBackdrop(); }
   btnHamburgerTop.addEventListener('click', toggleSidebar);
+  backdrop?.addEventListener('click', hideSidebar);
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') hideSidebar(); });
+  document.querySelectorAll('.menu .menu-item').forEach(btn=> btn.addEventListener('click', hideSidebar));
 
   // Navigation
   const pages = document.querySelectorAll('.page');
@@ -55,6 +64,8 @@
   const statTotalAdd = document.getElementById('statTotalAdd');
   const statTotalPay = document.getElementById('statTotalPay');
   const statCurrentBal = document.getElementById('statCurrentBal');
+  const statNextDate = document.getElementById('statNextDate');
+  const statNextAmount = document.getElementById('statNextAmount');
 
   // User search UI
   const userSearchInput = document.getElementById('userSearchInput');
@@ -90,7 +101,37 @@
   const id = (len=20)=> Array.from(crypto.getRandomValues(new Uint8Array(len))).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,len);
   const debounce = (fn, ms=250)=>{ let t=null; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); }; };
 
-  function formatYMDWeek(d=new Date()){
+  
+  function formatISODate(d=new Date()){
+    try{
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd}`;
+    }catch(e){ return ''; }
+  }
+  function parseYMDMMMDDD(str){
+    try{
+      const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+      const m = String(str||'').match(/^(\d{4})-([A-Za-z]{3})-(\d{2})-/);
+      if(!m) return null;
+      const y = +m[1], mon = months[m[2]], day = +m[3];
+      if(mon==null) return null;
+      return new Date(y, mon, day);
+    }catch(e){ return null; }
+  }
+  function ensureDefaultDate(){
+    try{
+      if (peDate){
+        const v = String(peDate.value||'');
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) peDate.value = formatISODate(new Date());
+      }
+    }catch(e){}
+  }
+
+function addMonths(d, months){ try{ return new Date(d.getFullYear(), d.getMonth()+months, d.getDate()); }catch(e){ return d; } }
+
+function formatYMDWeek(d=new Date()){
     try{
       const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -268,7 +309,7 @@ function renderPaymentsTable(entries){
       paymentsTableBody.innerHTML='<tr><td colspan="8">No entries yet.</td></tr>';
       paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td><td></td>';
           // Reset stat cards on Clear All
-    try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); } catch(e) {}
+    try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); if (statNextDate) statNextDate.textContent='—'; if (statNextAmount) statNextAmount.textContent = moneyQ(0); } catch(e) {}
 return;
     }
     let idx=1;
@@ -303,7 +344,33 @@ return;
         statCurrentBal.textContent = moneyQ(lastBal || 0);
       }
     } catch(e) {}
-    // after render, set default credit
+    
+    // Next Collection Date & Collection Amount
+    try{
+      if (Array.isArray(arr) && arr.length){
+        const last = arr[arr.length-1];
+        // Base = last payment date (preferred), else ts, else today
+        let baseDate = null;
+        if (last.date) baseDate = parseYMDMMMDDD(last.date);
+        if (!baseDate && last.ts) baseDate = new Date(last.ts);
+        if (!baseDate) baseDate = new Date();
+        const nextDate = addMonths(baseDate, 1);
+        if (statNextDate) statNextDate.textContent = formatYMDWeek(nextDate);
+
+        // Collection Amount = credit x previous percent
+        const credit = toNum(('credit' in last) ? last.credit : (last.initial || 0));
+        let prevPct = ('percent' in last) ? toNum(last.percent) : 0;
+        if (!prevPct && credit) {
+          const lastPay = toNum(last.payment || 0);
+          prevPct = lastPay ? (lastPay / credit) * 100 : 0;
+        }
+        const collAmt = credit * (prevPct/100);
+        if (statNextAmount) statNextAmount.textContent = moneyQ(collAmt);
+      } else {
+        if (statNextDate) statNextDate.textContent = '—';
+        if (statNextAmount) statNextAmount.textContent = moneyQ(0);
+      }
+    }catch(e){}// after render, set default credit
     setCreditDefaultForAdd(arr);
   }
 
@@ -312,7 +379,7 @@ function refreshPaymentsTable(){
 
   function refreshPaymentsTable(){
     const key = accId.value.trim();
-    if(!key){ paymentsTableBody.innerHTML='<tr><td colspan="8">Select an account via User Search.</td></tr>'; paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td></td><td></td>'; try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); } catch(e) {}
+    if(!key){ paymentsTableBody.innerHTML='<tr><td colspan="8">Select an account via User Search.</td></tr>'; paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td></td><td></td>'; try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); if (statNextDate) statNextDate.textContent='—'; if (statNextAmount) statNextAmount.textContent = moneyQ(0); } catch(e) {}
     return; }
     getEntriesOnce(key).then(renderPaymentsTable);
   }
@@ -397,7 +464,7 @@ function refreshPaymentsTable(){
     // Reset payments table & totals to default message
     paymentsTableBody.innerHTML='<tr><td colspan="8">Select an account via User Search.</td></tr>';
     paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td></td><td></td>';
-        try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); } catch(e) {}
+        try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); if (statNextDate) statNextDate.textContent='—'; if (statNextAmount) statNextAmount.textContent = moneyQ(0); } catch(e) {}
     // Reset form fields & credit field to editable
     peCredit.value=''; peCredit.readOnly=false; peCredit.placeholder='first entry only';
     [peAdditional, pePayment, peMisc, peBalance, peNotes].forEach(i=> i.value=''); if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); }
@@ -423,7 +490,7 @@ function refreshPaymentsTable(){
       misc: +(peMisc.value||0),
       balance: +(peBalance.value||0),
       percent: +(pePercent ? (pePercent.value||0) : 0),
-      date: (peDate ? (peDate.value||formatYMDWeek(new Date())) : formatYMDWeek(new Date())),
+      date: (peDate && peDate.value) ? formatYMDWeek(new Date(peDate.value)) : formatYMDWeek(new Date()),
       notes: peNotes.value||'',
       ts: Date.now(),
       initial: +(peCredit.value||0) // legacy
@@ -446,7 +513,7 @@ function refreshPaymentsTable(){
       misc: +(peMisc.value||0),
       balance: +(peBalance.value||0),
       percent: +(pePercent ? (pePercent.value||0) : 0),
-      date: (peDate ? (peDate.value||formatYMDWeek(new Date())) : formatYMDWeek(new Date())),
+      date: (peDate && peDate.value) ? formatYMDWeek(new Date(peDate.value)) : formatYMDWeek(new Date()),
       notes: peNotes.value||'',
       ts: Date.now(),
       initial: +(peCredit.value||0) // legacy
@@ -481,7 +548,7 @@ function refreshPaymentsTable(){
       peBalance.value = money(v.balance||0);
       peNotes.value = v.notes || '';
       if (pePercent) pePercent.value = (('percent' in v) ? v.percent : (toNum(v.payment||0) && toNum(credit||0) ? ((toNum(v.payment)/toNum(credit))*100).toFixed(2) : ''));
-      if (peDate) peDate.value = (v.date || (v.ts ? formatYMDWeek(new Date(v.ts)) : formatYMDWeek(new Date())));
+      if (peDate){ let dt=null; if (v.date) dt = parseYMDMMMDDD(v.date); if(!dt && v.ts) dt = new Date(v.ts); if(!dt) dt = new Date(); peDate.value = formatISODate(dt); }
       selectedPaymentKey = rowKey;
       btnUpdateEntry.disabled = false;
       Array.from(paymentsTableBody.querySelectorAll('tr')).forEach(x=>x.classList.remove('active'));
@@ -635,15 +702,15 @@ function refreshPaymentsTable(){
     searchPaymentsTableBody.innerHTML = '';
     const arr = Object.entries(entries || {}).map(([k,v])=>({k, ...v})).sort((a,b)=> (a.ts||0)-(b.ts||0));
     if(arr.length===0){
-      searchPaymentsTableBody.innerHTML='<tr><td colspan="7">No entries yet.</td></tr>';
-      searchPaymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td>';
+      searchPaymentsTableBody.innerHTML='<tr><td colspan="9">No entries yet.</td></tr>';
+      searchPaymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td>–</td><td></td><td></td>';
       return;
     }
     let i=1; let sum={add:0, pay:0, misc:0};
     arr.forEach(v=>{
       const credit = ('credit' in v) ? v.credit : (v.initial || 0);
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${i++}</td><td>${money(credit||0)}</td><td>${money(v.additional||0)}</td><td>${money(v.payment||0)}</td><td>${money(v.misc||0)}</td><td>${money(('balance' in v && v.balance!==undefined) ? v.balance : (toNum(credit) + toNum(v.additional||0) - toNum(v.payment||0)))}</td><td>${(v.notes||'')}</td>`;
+      tr.innerHTML = `<td>${i++}</td><td>${money(credit||0)}</td><td>${money(v.additional||0)}</td><td>${money(v.payment||0)}</td><td>${money(v.misc||0)}</td><td>${money(('balance' in v && v.balance!==undefined) ? v.balance : ((credit + toNum(v.additional||0) + toNum(v.misc||0)) - toNum(v.payment||0)))}</td><td>${('percent' in v) ? (toNum(v.percent).toFixed(2) + '%') : (toNum(v.payment||0)&&toNum(credit||0) ? ((toNum(v.payment)/toNum(credit))*100).toFixed(2)+'%' : '')}</td><td>${v.date || (v.ts ? formatYMDWeek(new Date(v.ts)) : '')}</td><td>${(v.notes||'')}</td>`;
       searchPaymentsTableBody.appendChild(tr);
       sum.add += +(v.additional||0);
       sum.pay += +(v.payment||0);
@@ -695,8 +762,20 @@ function refreshPaymentsTable(){
     if(accSearchInput) accSearchInput.value='';
     if(accSearchResults) accSearchResults.innerHTML='';
     if(searchPaymentsTableBody) searchPaymentsTableBody.innerHTML='';
-    if(searchPaymentsTotals) searchPaymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td>';
+    if(searchPaymentsTotals) searchPaymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td>–</td><td></td><td></td>';
   });
 
 })();
   function ensureDefaultDate(){ if (peDate && !String(peDate.value||'').trim()) { peDate.value = formatYMDWeek(new Date()); } }
+
+try{
+  const vv = window.visualViewport;
+  const kbThreshold = 140;
+  if(vv){
+    let base = vv.height;
+    vv.addEventListener('resize', ()=>{
+      const open = (base - vv.height) > kbThreshold;
+      document.body.classList.toggle('keyboard-open', open);
+    });
+  }
+}catch(e){}
