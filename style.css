@@ -39,7 +39,7 @@ body{
   color:var(--text-on-dark);
   font:14px/1.45 system-ui,Segoe UI,Roboto,Arial,Helvetica,sans-serif
 }
-#app{display:block;height:100vh;overflow:hidden;position:relative}
+#app{display:block;min-overflow-x:hidden;position:relative}
 
 /* Sidebar (overlay) */
 aside#sidebar{
@@ -97,7 +97,7 @@ button:hover{filter:brightness(1.12)}
 .status-dot{width:10px;height:10px;border-radius:50%;background:#7f1d1d;display:inline-block}
 .status-dot.ok{background:var(--ok)}
 
-.page{display:none;padding:1rem;overflow:auto;height:calc(100vh - 56px)}
+.page{display:none;padding:1rem;overflow:auto;min-height:calc(100vh - 56px);}
 .page.visible{display:block}
 
 /* CARDS use requested color */
@@ -408,3 +408,179 @@ tbody td {
   background: #E6F4FF !important;
   border-color: var(--card-border) !important;
 }
+
+
+/* === FINAL OVERRIDES: remove blue accents & set fields to white =============== */
+
+/* Links: use theme greens, not browser blue */
+a, a:visited{
+  color: var(--c-medium) !important;
+  text-decoration: none;
+}
+a:hover, a:focus{
+  color: var(--c-dark) !important;
+  text-decoration: underline;
+}
+
+/* Form fields: white boxes with dark text */
+input, select, textarea, .form-control, .field, input[type="text"], input[type="number"],
+input[type="email"], input[type="password"], input[type="tel"], input[type="search"]{
+  background: #FFFFFF !important;
+  color: var(--text-dark) !important;
+  border: 1px solid var(--c-light) !important;
+  border-radius: .35rem !important;
+}
+
+/* Focus ring: green (not blue) */
+input:focus, select:focus, textarea:focus, .form-control:focus{
+  outline: none !important;
+  border-color: var(--c-medium) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-medium) 35%, transparent) !important;
+}
+
+/* Buttons: ensure no default blue sneaks in */
+button, .btn, input[type="button"], input[type="submit"]{
+  background: var(--c-medium) !important;
+  color: var(--text-light) !important;
+  border: 1px solid var(--c-medium) !important;
+}
+button:hover, .btn:hover, input[type="submit"]:hover{
+  background: var(--c-dark) !important;
+  border-color: var(--c-dark) !important;
+}
+
+/* Table links/buttons inside table cells */
+table a{ color: var(--c-dark) !important; }
+table a:hover{ color: var(--c-medium) !important; }
+
+/* Subtle neutral scrollbar (avoid blue on some UA) */
+*{
+  scrollbar-color: var(--c-medium) var(--c-pale);
+}
+
+
+/* === Admin • Users table hover/readability fixes === */
+#usersTable tbody tr:hover{
+  background: #F4FAFF !important;  /* soft light blue */
+  color: #0f172a !important;        /* keep dark text readable */
+}
+#usersTable tbody tr.active{
+  background: #E6F4FF !important;   /* light selection */
+  outline: 2px solid var(--btn-cyan-border, #4682B4) !important;
+  color: #0f172a !important;
+}
+
+
+/* vSearch: ensure search payments table uses same striping and totals style */
+#searchPaymentsTable tbody tr:nth-child(odd){ background: #FFFFFF !important; }
+#searchPaymentsTable tbody tr:nth-child(even){ background: #F4FAFF !important; }
+#searchPaymentsTotals td { background: #FFF8E6 !important; color: #0f172a !important; font-weight:700; }
+
+
+
+/* ===== Mobile App Look & Feel ===== */
+:root{
+  --app-yellow:#F4B000;
+  --app-yellow-dark:#D79A00;
+  --app-bg:#0b1320;
+  --card-bg:#0f2942;
+  --surface:#eaf6ff;
+}
+
+html, body { background: linear-gradient(180deg,#6ea0bf 0%, #0b2945 55%, #00112a 100%) fixed; }
+
+/* App top bar */
+.topbar{
+  position:sticky; top:0; z-index:50;
+  height:56px; display:flex; align-items:center; gap:.75rem;
+  background:var(--app-yellow); color:#0b0b0b; border-bottom:1px solid rgba(0,0,0,.08);
+  padding:0 .75rem; box-shadow:0 2px 8px rgba(0,0,0,.1);
+  border-radius:0 0 16px 16px;
+}
+.topbar #btnHamburgerTop{ background:transparent; border:0; font-size:1.1rem }
+.app-title{ font-size:1.05rem; font-weight:700; letter-spacing:.3px; margin:0 }
+
+/* Bottom Tab Bar */
+.tabbar{
+  position:fixed; bottom:0; left:0; right:0; z-index: 9999;
+  height:64px; display:flex; justify-content:space-around; align-items:center;
+  background:var(--app-yellow); border-top:1px solid rgba(0,0,0,.08);
+  box-shadow:0 -4px 12px rgba(0,0,0,.12);
+  border-radius:16px 16px 0 0;
+ pointer-events: auto;}
+.tabbar .tab{
+  background:transparent; border:0; color:#111;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:.2rem; font-size:.8rem; width:24%; height:56px; border-radius:12px;
+}
+.tabbar .tab.active{ background:rgba(255,255,255,.75); }
+.tabbar .tab span{ font-size:1.15rem; line-height:1rem }
+
+/* Main content gets safe padding to avoid overlap */
+main#content{ padding-bottom: 80px; }
+
+/* Cards refresh */
+.card{ background: rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18); border-radius:16px; }
+.card.sub{ background: rgba(255,255,255,.08); border-radius:14px; }
+.card h2{ color:#fff; }
+
+/* Inputs & buttons larger for touch */
+input, select, textarea{ font-size:16px; padding:.8rem .9rem; border-radius:12px; }
+button{ border-radius:12px; }
+button.primary{ background:#111; color:#fff; }
+button.ghost{ background:rgba(255,255,255,.85); color:#0b0b0b; }
+.pill{ border-radius:999px; padding:.25rem .6rem; }
+
+/* Tables */
+.table-wrap table{ border-radius:16px; overflow:hidden; }
+.table-wrap th, .table-wrap td{ font-size:.95rem; }
+
+/* Layout on larger screens: center narrow viewport for app look */
+@media(min-width:900px){
+  body{ display:flex; justify-content:center; }
+  #app{ width:430px; max-width:430px; box-shadow:0 10px 40px rgba(0,0,0,.2); border-radius:24px; overflow:hidden; }
+  aside#sidebar{ position:fixed; left:calc(50% - 215px); }
+  .topbar, .tabbar{ left:calc(50% - 215px); right:calc(50% - 215px); position:fixed; }
+  main#content{ margin-top:56px; padding-bottom: 88px; }
+}
+
+/* Hide old floating hamburger if a sidebar button exists already */
+#btnHamburger{ display:none; }
+
+
+/* === Desktop cleanup: ensure normal topbar + hide mobile tabbar === */
+.tabbar{ display: none; } /* default hidden; will show on small screens only */
+.topbar{
+  background: var(--muted) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--shadow);
+}
+
+/* Apply mobile app look only on small screens */
+@media (max-width: 900px){
+  .topbar{
+    position: sticky; top: 0; z-index: 50;
+    height: 56px; display: flex; align-items: center; gap: .75rem;
+    background: var(--app-yellow) !important; color: #0b0b0b;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+    padding: 0 .75rem; box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    border-radius: 0 0 16px 16px !important;
+  }
+  .tabbar{ display: flex; }
+  main#content{ padding-bottom: 80px; }
+}
+
+
+/* === Strong Desktop Overrides (full-width, no phone frame) === */
+@media (min-width: 1000px){
+  html, body{ display:block !important; }
+  #app{ width:auto !important; max-width:none !important; margin:0 !important; box-shadow:none !important; border-radius:0 !important; }
+  aside#sidebar{ position:fixed !important; left:0 !important; top:0 !important; bottom:0 !important; }
+  .topbar{ position:sticky !important; top:0; left:0 !important; right:0 !important; max-width:none !important; margin:0 !important; }
+  .tabbar{ display:none !important; } /* hidden on desktop */
+  main#content{ max-width:1200px; margin:0 auto; padding-left:20px; padding-right:20px; }
+}
+
+@media (max-width: 999px){ main#content{ padding-bottom: 80px; } }
+
+@media (max-width: 999px){ main#content{ padding-bottom: 80px; } }

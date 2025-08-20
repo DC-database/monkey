@@ -25,28 +25,14 @@
     document.getElementById(id).classList.add('visible');
     menuButtons.forEach(b=> b.classList.toggle('active', b.dataset.target===id));
   }
-  setActivePage('page-settings');
+  setActivePage('page-search-accounts');
 
   // Elements common
   const adminAuthState = document.getElementById('adminAuthState');
-  const accountAuthState = document.getElementById('accountAuthState');
-  const btnAdminLogout = document.getElementById('btnAdminLogout');
-  const btnAccountLogout = document.getElementById('btnAccountLogout');
-  const menuMyAccount = document.getElementById('menuMyAccount');
-
+    const btnAdminLogout = document.getElementById('btnAdminLogout');
+    
   // My Account view bits
-  const myAccountId = document.getElementById('myAccountId');
-  const myAccountName = document.getElementById('myAccountName');
-  const myAccountEmail = document.getElementById('myAccountEmail');
-  const myAccountWelcome = document.getElementById('myAccountWelcome');
-  const myEntriesTable = document.getElementById('myEntriesTable');
-  const myEntriesTableBody = myEntriesTable.querySelector('tbody');
-  const myEntriesTotals = document.getElementById('myEntriesTotals');
-  const mStatAdd = document.getElementById('mStatAdd');
-  const mStatPay = document.getElementById('mStatPay');
-  const mStatBal = document.getElementById('mStatBal');
-  const btnRefreshMyEntries = document.getElementById('btnRefreshMyEntries');
-
+                      
   // Admin page bits
   const accId = document.getElementById('accId');
   const accName = document.getElementById('accName');
@@ -54,10 +40,13 @@
   const peCredit = document.getElementById('peCredit');
   const peAdditional = document.getElementById('peAdditional');
   const pePayment = document.getElementById('pePayment');
+  const pePercent = document.getElementById('pePercent');
+  const peDate = document.getElementById('peDate');
   const peMisc = document.getElementById('peMisc');
   const peBalance = document.getElementById('peBalance');
   const peNotes = document.getElementById('peNotes');
   const btnAddEntry = document.getElementById('btnAddEntry');
+  try{ ensureDefaultDate(); }catch(e){}
   const btnUpdateEntry = document.getElementById('btnUpdateEntry');
   const btnClearEntry = document.getElementById('btnClearEntry');
   const paymentsTable = document.getElementById('paymentsTable');
@@ -88,7 +77,6 @@
   const refs = { accounts: db.ref('accounts'), users: db.ref('users') };
 
   // State
-  let myAccountSession = null;
   let selectedPaymentKey = null;
   let usersCache = null;
 
@@ -98,122 +86,34 @@
   const fmtQAR = new Intl.NumberFormat(undefined, {style:'currency', currency:CURRENCY, minimumFractionDigits:2});
   const money = (v)=> fmt.format(Number.isFinite(+v) ? (+v) : 0);
   const moneyQ = (v)=> fmtQAR.format(Number.isFinite(+v) ? (+v) : 0);
+  const toNum = (x)=>{ if(typeof x==='number') return x||0; if(x==null) return 0; const s=String(x).replace(/[,\s]/g,''); const n=parseFloat(s); return Number.isFinite(n)?n:0; };
   const id = (len=20)=> Array.from(crypto.getRandomValues(new Uint8Array(len))).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,len);
   const debounce = (fn, ms=250)=>{ let t=null; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); }; };
 
+  function formatYMDWeek(d=new Date()){
+    try{
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const yyyy = d.getFullYear();
+      const mmm = months[d.getMonth()];
+      const dd = String(d.getDate()).padStart(2,'0');
+      const ddd = days[d.getDay()];
+      return `${yyyy}-${mmm}-${dd}-${ddd}`;
+    }catch(e){ return ''; }
+  }
+
+
   /* ================= MODALS ================= */
   const modalBackdrop = document.getElementById('modalBackdrop');
-  const modalMyAccount = document.getElementById('modalMyAccount');
   const modalAdmin = document.getElementById('modalAdmin');
-  modalBackdrop.hidden = true; modalMyAccount.hidden = true; modalAdmin.hidden = true;
-  function openModal(el){ modalBackdrop.hidden=false; el.hidden=false; hideSidebar(); }
-  function closeModal(el){ el.hidden=true; if(modalMyAccount.hidden && modalAdmin.hidden){ modalBackdrop.hidden=true; } }
+  if (modalBackdrop) modalBackdrop.hidden = true;
+  if (modalAdmin) modalAdmin.hidden = true;
+  function openModal(el){ if(modalBackdrop) modalBackdrop.hidden=false; if(el) el.hidden=false; hideSidebar(); }
+  function closeModal(el){ if(el) el.hidden=true; if(modalAdmin && modalAdmin.hidden && modalBackdrop) modalBackdrop.hidden=true; }
   document.querySelectorAll('.modal-close').forEach(btn=>{
-    btn.addEventListener('click', (e)=>{ const id = e.currentTarget.getAttribute('data-close'); if(id) closeModal(document.getElementById(id)); });
+    btn.addEventListener('click', (e)=>{ const id = e.currentTarget.getAttribute('data-close'); if(id){ const el = document.getElementById(id); if(el) closeModal(el); } });
   });
-  modalBackdrop.addEventListener('click', ()=>{ [modalMyAccount, modalAdmin].forEach(m=> m.hidden=true); modalBackdrop.hidden=true; });
-
-  /* ================= MY ACCOUNT ================= */
-  const accLoginEmail = document.getElementById('accLoginEmail');
-  const accLoginPassword = document.getElementById('accLoginPassword');
-  const btnAccLogin = document.getElementById('btnAccLogin');
-  const accLoginMsg = document.getElementById('accLoginMsg');
-
-  function updateMyAccountUI(){
-    const isIn = !!myAccountSession;
-    accountAuthState.textContent = isIn ? 'Signed in' : 'Signed out';
-    accountAuthState.classList.toggle('ok', isIn);
-    accountAuthState.classList.toggle('danger', !isIn);
-    menuMyAccount.textContent = isIn ? 'My Account' : 'Log in to My Account';
-    myAccountWelcome.style.display = isIn ? 'inline-flex' : 'none';
-    if(isIn){
-      myAccountId.value = myAccountSession.accountId || '';
-      myAccountName.value = myAccountSession.accountName || '';
-      myAccountEmail.value = myAccountSession.email || '';
-      myAccountWelcome.textContent = 'Welcome ' + (myAccountSession.accountName || myAccountSession.email || '');
-      refreshMyEntries();
-    }else{
-      myEntriesTableBody.innerHTML = '<tr><td colspan="7">Please log in to see entries.</td></tr>';
-      myEntriesTotals.innerHTML = '<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td>';
-      myAccountId.value = myAccountName.value = myAccountEmail.value = '';
-    }
-  }
-
-  menuMyAccount.addEventListener('click', ()=>{
-    if(!myAccountSession){ openModal(modalMyAccount); }
-    else { setActivePage('page-myaccount'); }
-    hideSidebar();
-  });
-
-  btnAccLogin.addEventListener('click', ()=>{
-    const email = (accLoginEmail.value||'').trim().toLowerCase();
-    const pass = (accLoginPassword.value||'').trim();
-    if(!email || !pass){ accLoginMsg.textContent = 'Enter email & password'; return; }
-    accLoginMsg.textContent = 'Checking...';
-    refs.users.once('value').then(s=>{
-      const users = s.val()||{};
-      let foundKey = null, found = null;
-      for(const [k,v] of Object.entries(users)){
-        if((v.email||'').toLowerCase()===email && (v.password||'')===pass){ foundKey=k; found=v; break; }
-      }
-      if(!found){ accLoginMsg.textContent = 'Invalid email or password.'; return; }
-      myAccountSession = { key: foundKey, accountId: found.accountId, accountName: found.accountName, email: found.email };
-      accLoginMsg.textContent = 'Success!';
-      closeModal(modalMyAccount);
-      updateMyAccountUI();
-      setActivePage('page-myaccount');
-    }).catch(err=> accLoginMsg.textContent = 'Error: '+err.message);
-  });
-  btnAccountLogout.addEventListener('click', ()=>{ myAccountSession = null; updateMyAccountUI(); });
-
-  function renderEntriesTable(targetTbody, totalsEl, entriesObj){
-    targetTbody.innerHTML = '';
-    const arr = Object.entries(entriesObj || {}).map(([k,v])=> ({k, ...v}));
-    arr.sort((a,b)=> (a.ts||0) - (b.ts||0)); // oldest first
-    if(arr.length===0){
-      targetTbody.innerHTML = '<tr><td colspan="7">No entries yet.</td></tr>';
-      totalsEl.innerHTML = '<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td>';
-      return;
-    }
-    let idx = 1;
-    let sum = { add:0, pay:0, misc:0 };
-    arr.forEach(v=>{
-      const credit = ('credit' in v) ? v.credit : (v.initial || 0);
-      const tr = document.createElement('tr');
-      tr.dataset.key = v.k;
-      tr.innerHTML = `
-        <td>${idx++}</td>
-        <td>${money(credit||0)}</td>
-        <td>${money(v.additional||0)}</td>
-        <td>${money(v.payment||0)}</td>
-        <td>${money(v.misc||0)}</td>
-        <td>${money(v.balance||0)}</td>
-        <td>${(v.notes||'')}</td>`;
-      sum.add += +(v.additional||0);
-      sum.pay += +(v.payment||0);
-      sum.misc += +(v.misc||0);
-      targetTbody.appendChild(tr);
-    });
-    totalsEl.innerHTML = `<td>Σ</td><td>–</td><td>${money(sum.add)}</td><td>${money(sum.pay)}</td><td>${money(sum.misc)}</td><td>–</td><td></td>`;
-    // Update stat cards for My Account
-    try {
-      if (mStatAdd && mStatPay && mStatBal) {
-        const lastBal = (arr.length ? (arr[arr.length-1].balance || 0) : 0);
-        mStatAdd.textContent = moneyQ(sum.add || 0);
-        mStatPay.textContent = moneyQ(sum.pay || 0);
-        mStatBal.textContent = moneyQ(lastBal || 0);
-      }
-    } catch(e) {}
-
-  }
-
-  function refreshMyEntries(){
-    if(!myAccountSession || !myAccountSession.accountId){ myEntriesTableBody.innerHTML = '<tr><td colspan="7">Please log in.</td></tr>'; return; }
-    refs.accounts.child(myAccountSession.accountId).child('entries').once('value').then(s=>{
-      renderEntriesTable(myEntriesTableBody, myEntriesTotals, s.val());
-    });
-  }
-  btnRefreshMyEntries.addEventListener('click', refreshMyEntries);
+  if (modalBackdrop) modalBackdrop.addEventListener('click', ()=>{ if(modalAdmin) modalAdmin.hidden=true; if(modalBackdrop) modalBackdrop.hidden=true; });
 
   /* ================= ADMIN (Firebase Auth) ================= */
   const btnDoAdminLogin = document.getElementById('btnDoAdminLogin');
@@ -239,9 +139,86 @@
     if(requireAdminOrModal('page-admin-users')) setActivePage('page-admin-users');
     hideSidebar();
   });
-  document.getElementById('menuSettings').addEventListener('click', ()=>{ setActivePage('page-settings'); hideSidebar(); });
+  
+  document.getElementById('menuSearchAccounts').addEventListener('click', ()=>{
+    setActivePage('page-search-accounts'); hideSidebar();
+  });
 
-  function updateAdminState(){
+  document.getElementById('menuSettings').addEventListener('click', ()=>{ setActivePage('page-settings'); hideSidebar(); });
+  // Bottom tab bar routing
+
+  const tab = id=>document.getElementById(id);
+  const activateTab = (id)=>{ document.querySelectorAll('#tabbar .tab').forEach(b=>b.classList.remove('active')); const el = document.getElementById(id); if(el) el.classList.add('active'); };
+  tab('tabSearch')?.addEventListener('click', ()=>{ setActivePage('page-search-accounts'); activateTab('tabSearch'); });
+  tab('tabPayments')?.addEventListener('click', ()=>{ if(requireAdminOrModal('page-admin-payments')){ setActivePage('page-admin-payments'); activateTab('tabPayments'); } });
+  tab('tabUsers')?.addEventListener('click', ()=>{ if(requireAdminOrModal('page-admin-users')){ setActivePage('page-admin-users'); activateTab('tabUsers'); } });
+  tab('tabSettings')?.addEventListener('click', ()=>{ setActivePage('page-settings'); activateTab('tabSettings'); });
+  // default active tab
+  activateTab('tabSearch');
+
+  
+// === Bottom tabbar: robust attach on DOM ready ===
+(function(){
+  function install(){
+    if (window.__tabbarDelegated) return true;
+    const tabbar = document.getElementById('tabbar');
+    if (!tabbar) return false;
+    window.__tabbarDelegated = true;
+
+    const activateTab = (id)=>{
+      try{
+        document.querySelectorAll('#tabbar .tab').forEach(b=>b.classList.remove('active'));
+        const el = document.getElementById(id);
+        if (el) el.classList.add('active');
+      }catch(e){}
+    };
+
+    const handle = (evt)=>{
+      const btn = evt.target && evt.target.closest ? evt.target.closest('button.tab') : null;
+      if (!btn) return;
+      evt.preventDefault();
+      const target = btn.getAttribute('data-target');
+      // Fallback targets by id
+      const idMap = {
+        'tabSearch': 'page-search-accounts',
+        'tabPayments': 'page-admin-payments',
+        'tabUsers': 'page-admin-users',
+        'tabSettings': 'page-settings'
+      };
+      const goto = target || idMap[btn.id];
+      if (!goto) return;
+
+      if (goto === 'page-admin-payments' || goto === 'page-admin-users'){
+        if (!requireAdminOrModal(goto)) return;
+      }
+      setActivePage(goto);
+      activateTab(btn.id);
+    };
+
+    tabbar.addEventListener('click', handle, {passive:false});
+    tabbar.addEventListener('touchstart', handle, {passive:false});
+
+    // Also attach direct listeners if buttons exist (for redundancy)
+    const tab = id=>document.getElementById(id);
+    tab('tabSearch')?.addEventListener('click', ()=>{ setActivePage('page-search-accounts'); activateTab('tabSearch'); });
+    tab('tabPayments')?.addEventListener('click', ()=>{ if(requireAdminOrModal('page-admin-payments')){ setActivePage('page-admin-payments'); activateTab('tabPayments'); } });
+    tab('tabUsers')?.addEventListener('click', ()=>{ if(requireAdminOrModal('page-admin-users')){ setActivePage('page-admin-users'); activateTab('tabUsers'); } });
+    tab('tabSettings')?.addEventListener('click', ()=>{ setActivePage('page-settings'); activateTab('tabSettings'); });
+
+    return true;
+  }
+
+  if (!install()){
+    const ready = ()=>{ if (!install()) setTimeout(ready, 80); };
+    if (document.readyState === 'loading'){
+document.addEventListener('DOMContentLoaded', ready, {once:true});
+      window.addEventListener('load', ready, {once:true});
+    } else {
+      ready();
+    }
+  }
+})();
+function updateAdminState(){
     const isIn = !!auth.currentUser;
     adminAuthState.textContent = isIn ? 'Signed in' : 'Signed out';
     adminAuthState.classList.toggle('ok', isIn);
@@ -263,19 +240,19 @@
       })
       .catch(err=> adminLoginMsg.textContent = 'Error: '+err.message);
   });
-  btnAdminCreate.addEventListener('click', ()=>{
+  if(btnAdminCreate){ btnAdminCreate.addEventListener('click', ()=>{
     adminLoginMsg.textContent = 'Creating...';
     auth.createUserWithEmailAndPassword(adminEmail.value.trim(), adminPassword.value.trim())
       .then(()=> adminLoginMsg.textContent = 'Admin created. Now signed in.')
       .catch(err=> adminLoginMsg.textContent = 'Error: '+err.message);
-  });
-  btnAdminForgot.addEventListener('click', ()=>{
+  }); }
+  if(btnAdminForgot){ btnAdminForgot.addEventListener('click', ()=>{
     const email = adminEmail.value.trim();
     if(!email) return adminLoginMsg.textContent='Enter email first.';
     auth.sendPasswordResetEmail(email)
       .then(()=> adminLoginMsg.textContent='Password reset email sent.')
       .catch(err=> adminLoginMsg.textContent='Error: '+err.message);
-  });
+  }); }
   btnAdminLogout.addEventListener('click', ()=> auth.signOut());
 
   /* ================= Accounts / Payments CRUD ================= */
@@ -283,18 +260,22 @@
     return refs.accounts.child(accountKey).child('entries').once('value').then(s=> s.val()||{});
   }
 
-  function renderPaymentsTable(entries){
+  
+function renderPaymentsTable(entries){
     paymentsTableBody.innerHTML = '';
     const arr = Object.entries(entries || {}).map(([k,v])=>({k, ...v})).sort((a,b)=> (a.ts||0)-(b.ts||0));
     if(arr.length===0){
       paymentsTableBody.innerHTML='<tr><td colspan="8">No entries yet.</td></tr>';
       paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td><td></td>';
-      return;
+          // Reset stat cards on Clear All
+    try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); } catch(e) {}
+return;
     }
     let idx=1;
     let sum = { add:0, pay:0, misc:0 };
     arr.forEach(v=>{
       const credit = ('credit' in v) ? v.credit : (v.initial || 0);
+      const bal = (('balance' in v && v.balance!==undefined) ? v.balance : (toNum(credit) + toNum(v.additional||0) - toNum(v.payment||0)));
       const tr = document.createElement('tr');
       tr.dataset.key = v.k;
       tr.innerHTML = `
@@ -303,32 +284,36 @@
         <td>${money(v.additional||0)}</td>
         <td>${money(v.payment||0)}</td>
         <td>${money(v.misc||0)}</td>
-        <td>${money(v.balance||0)}</td>
+        <td>${money(bal)}</td>
         <td>${(v.notes||'')}</td>
         <td><button class="danger btnDelete">Delete</button></td>`;
       paymentsTableBody.appendChild(tr);
-      sum.add += +(v.additional||0);
-      sum.pay += +(v.payment||0);
-      sum.misc += +(v.misc||0);
+      sum.add += toNum(v.additional||0);
+      sum.pay += toNum(v.payment||0);
+      sum.misc += toNum(v.misc||0);
     });
     paymentsTotals.innerHTML = `<td>Σ</td><td>–</td><td>${money(sum.add)}</td><td>${money(sum.pay)}</td><td>${money(sum.misc)}</td><td>–</td><td></td><td></td>`;
     // Update stat cards for Admin
     try {
       if (statTotalAdd && statTotalPay && statCurrentBal) {
-        const lastBal = (arr.length ? (arr[arr.length-1].balance || 0) : 0);
-        statTotalAdd.textContent = moneyQ(sum.add || 0);
+        const last = arr.length ? arr[arr.length-1] : null;
+        const lastBal = last ? (('balance' in last && last.balance!==undefined) ? last.balance : (toNum(('credit' in last)?last.credit:(last.initial||0)) + toNum(last.additional||0) - toNum(last.payment||0))) : 0;
+        statTotalAdd.textContent = moneyQ((function(){ const first = arr.length ? arr[0] : null; const firstCredit = first ? toNum(('credit' in first) ? first.credit : (first.initial || 0)) : 0; return firstCredit + (sum.add || 0); })());
         statTotalPay.textContent = moneyQ(sum.pay || 0);
         statCurrentBal.textContent = moneyQ(lastBal || 0);
       }
     } catch(e) {}
-
     // after render, set default credit
     setCreditDefaultForAdd(arr);
   }
 
+function refreshPaymentsTable(){
+}
+
   function refreshPaymentsTable(){
     const key = accId.value.trim();
-    if(!key){ paymentsTableBody.innerHTML='<tr><td colspan="8">Select an account via User Search.</td></tr>'; paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td></td><td></td>'; return; }
+    if(!key){ paymentsTableBody.innerHTML='<tr><td colspan="8">Select an account via User Search.</td></tr>'; paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td></td><td></td>'; try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); } catch(e) {}
+    return; }
     getEntriesOnce(key).then(renderPaymentsTable);
   }
 
@@ -357,48 +342,88 @@
     }
   }
 
+  
+  function recalcPaymentFromPercent(){
+    if(!pePercent) return;
+    const pct = toNum(pePercent.value);
+    const credit = toNum(peCredit.value);
+    if(Number.isFinite(pct) && Number.isFinite(credit)){
+      const pay = (credit * pct) / 100;
+      pePayment.value = (Number.isFinite(pay)?pay:0).toFixed(2);
+    }
+    recalcBalance();
+  }
+
   function recalcBalance(){
-    const credit = parseFloat(peCredit.value||'0')||0;
-    const add = parseFloat(peAdditional.value||'0')||0;
-    const pay = parseFloat(pePayment.value||'0')||0;
+    const credit = toNum(peCredit.value);
+    const add = toNum(peAdditional.value);
+    const pay = toNum(pePayment.value);
     const bal = credit + add - pay;
-    peBalance.value = (+bal).toFixed(2);
+    peBalance.value = (Number.isFinite(bal)?bal:0).toFixed(2);
   }
 
   ['input','change'].forEach(evt => {
     [peCredit, peAdditional, pePayment].forEach(el => el.addEventListener(evt, recalcBalance));
   });
 
-  btnClearSelection.addEventListener('click', ()=>{
+  // Update payment when percent or credit changes
+  ;['input','change'].forEach(evt => {
+    if (pePercent) pePercent.addEventListener(evt, recalcPaymentFromPercent);
+    if (peCredit) peCredit.addEventListener(evt, recalcPaymentFromPercent);
+  });
+
+  if (btnClearSelection) btnClearSelection.addEventListener('click', ()=>{
     accId.value='';
     accName.value='';
     paymentsTableBody.innerHTML='<tr><td colspan="8">Select an account via User Search.</td></tr>';
     paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td></td><td></td>';
     peCredit.value=''; peCredit.readOnly=false; peCredit.placeholder='first entry only';
-    [peAdditional, pePayment, peMisc, peBalance, peNotes].forEach(i=> i.value='');
+    [peAdditional, pePayment, peMisc, peBalance, peNotes].forEach(i=> i.value=''); if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); }
     selectedPaymentKey=null; btnUpdateEntry.disabled=true;
   });
 
   function clearPaymentForm(){
-    [peAdditional, pePayment, peMisc, peBalance, peNotes].forEach(i=> i.value='');
+    [peAdditional, pePayment, peMisc, peBalance, peNotes].forEach(i=> i.value=''); if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); }
     selectedPaymentKey = null;
     btnUpdateEntry.disabled = true;
     Array.from(paymentsTableBody.querySelectorAll('tr')).forEach(tr=>tr.classList.remove('active'));
     refreshPaymentsTable(); // will reset credit default
   }
-  btnClearEntry.addEventListener('click', clearPaymentForm);
+
+  function clearAllSelectionAndForm(){
+    // Clear selected account
+    accId.value='';
+    accName.value='';
+    // Reset payments table & totals to default message
+    paymentsTableBody.innerHTML='<tr><td colspan="8">Select an account via User Search.</td></tr>';
+    paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td></td><td></td>';
+        try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); } catch(e) {}
+    // Reset form fields & credit field to editable
+    peCredit.value=''; peCredit.readOnly=false; peCredit.placeholder='first entry only';
+    [peAdditional, pePayment, peMisc, peBalance, peNotes].forEach(i=> i.value=''); if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); }
+    selectedPaymentKey=null; btnUpdateEntry.disabled=true;
+    // Also clear any user search UI rows so we are "back to Step 1"
+    if (userSearchResults) userSearchResults.innerHTML='';
+    if (userSearchInput) { try { userSearchInput.focus(); } catch(e){} }
+  }
+
+  // Step 3 'Clear All' now resets selection & table and focuses Step 1 search
+  btnClearEntry.addEventListener('click', ()=>{ clearAllSelectionAndForm(); setActivePage('page-admin-payments'); });
 
   btnAddEntry.addEventListener('click', ()=>{
     if(!auth.currentUser){ openModal(modalAdmin); modalAdmin.dataset.nextPage='page-admin-payments'; return; }
     const key = accId.value.trim();
     if(!key) return alert('Pick an account via User Search first');
     if(!peBalance.value) recalcBalance();
+    ensureDefaultDate();
     const payload = {
       credit: +(peCredit.value||0),
       additional: +(peAdditional.value||0),
       payment: +(pePayment.value||0),
       misc: +(peMisc.value||0),
-      balance: ((+peCredit.value||0) + (+peAdditional.value||0) - (+pePayment.value||0)),
+      balance: +(peBalance.value||0),
+      percent: +(pePercent ? (pePercent.value||0) : 0),
+      date: (peDate ? (peDate.value||formatYMDWeek(new Date())) : formatYMDWeek(new Date())),
       notes: peNotes.value||'',
       ts: Date.now(),
       initial: +(peCredit.value||0) // legacy
@@ -412,12 +437,16 @@
     const key = accId.value.trim();
     if(!key || !selectedPaymentKey) return;
     if(!peBalance.value) recalcBalance();
+    ensureDefaultDate();
+    ensureDefaultDate();
     const payload = {
       credit: +(peCredit.value||0),
       additional: +(peAdditional.value||0),
       payment: +(pePayment.value||0),
       misc: +(peMisc.value||0),
-      balance: ((+peCredit.value||0) + (+peAdditional.value||0) - (+pePayment.value||0)),
+      balance: +(peBalance.value||0),
+      percent: +(pePercent ? (pePercent.value||0) : 0),
+      date: (peDate ? (peDate.value||formatYMDWeek(new Date())) : formatYMDWeek(new Date())),
       notes: peNotes.value||'',
       ts: Date.now(),
       initial: +(peCredit.value||0) // legacy
@@ -443,14 +472,16 @@
     refs.accounts.child(key).child('entries').child(rowKey).once('value').then(s=>{
       const v = s.val()||{};
       const credit = ('credit' in v) ? v.credit : (v.initial || 0);
-      peCredit.value = (+credit || 0).toFixed(2);
+      peCredit.value = (toNum(credit||0)).toFixed(2);
       peCredit.readOnly = true; // keep credit locked to maintain history logic
       peCredit.placeholder = 'credit locked (from history)';
-      peAdditional.value = (v.additional ?? '').toString();
-      pePayment.value = (v.payment ?? '').toString();
+      peAdditional.value = v.additional || '';
+      pePayment.value = v.payment || '';
       peMisc.value = v.misc || '';
-      peBalance.value = (+v.balance || 0).toFixed(2);
+      peBalance.value = money(v.balance||0);
       peNotes.value = v.notes || '';
+      if (pePercent) pePercent.value = (('percent' in v) ? v.percent : (toNum(v.payment||0) && toNum(credit||0) ? ((toNum(v.payment)/toNum(credit))*100).toFixed(2) : ''));
+      if (peDate) peDate.value = (v.date || (v.ts ? formatYMDWeek(new Date(v.ts)) : formatYMDWeek(new Date())));
       selectedPaymentKey = rowKey;
       btnUpdateEntry.disabled = false;
       Array.from(paymentsTableBody.querySelectorAll('tr')).forEach(x=>x.classList.remove('active'));
@@ -576,6 +607,8 @@
   });
   btnAddUser.addEventListener('click', ()=>{
     if(!auth.currentUser){ openModal(modalAdmin); modalAdmin.dataset.nextPage='page-admin-users'; return; }
+    ensureDefaultDate();
+    ensureDefaultDate();
     const payload = { accountId: uAccId.value.trim(), accountName: uAccName.value.trim(), role: (uRole.value||'user'), email: uEmail.value.trim(), mobile: uMobile.value.trim(), password: uPassword.value.trim() };
     if(!payload.accountId || !payload.accountName) return alert('Account ID & Name required');
     refs.users.child(id(16)).set(payload);
@@ -588,4 +621,82 @@
 
   // Init: sidebar collapsed; content full width
   sidebar.classList.add('collapsed');
+
+  /* ================= SEARCH ACCOUNTS (read-only) ================= */
+  const accSearchInput = document.getElementById('accSearchInput');
+  const accSearchResults = document.getElementById('accSearchResults');
+  const btnClearAccSearch = document.getElementById('btnClearAccSearch');
+  const sAccId = document.getElementById('sAccId');
+  const sAccName = document.getElementById('sAccName');
+  const searchPaymentsTableBody = document.querySelector('#searchPaymentsTable tbody');
+  const searchPaymentsTotals = document.getElementById('searchPaymentsTotals');
+
+  function renderSearchPaymentsTable(entries){
+    searchPaymentsTableBody.innerHTML = '';
+    const arr = Object.entries(entries || {}).map(([k,v])=>({k, ...v})).sort((a,b)=> (a.ts||0)-(b.ts||0));
+    if(arr.length===0){
+      searchPaymentsTableBody.innerHTML='<tr><td colspan="7">No entries yet.</td></tr>';
+      searchPaymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td>';
+      return;
+    }
+    let i=1; let sum={add:0, pay:0, misc:0};
+    arr.forEach(v=>{
+      const credit = ('credit' in v) ? v.credit : (v.initial || 0);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i++}</td><td>${money(credit||0)}</td><td>${money(v.additional||0)}</td><td>${money(v.payment||0)}</td><td>${money(v.misc||0)}</td><td>${money(('balance' in v && v.balance!==undefined) ? v.balance : (toNum(credit) + toNum(v.additional||0) - toNum(v.payment||0)))}</td><td>${(v.notes||'')}</td>`;
+      searchPaymentsTableBody.appendChild(tr);
+      sum.add += +(v.additional||0);
+      sum.pay += +(v.payment||0);
+      sum.misc += +(v.misc||0);
+    });
+    searchPaymentsTotals.innerHTML = `<td>Σ</td><td>–</td><td>${money(sum.add)}</td><td>${money(sum.pay)}</td><td>${money(sum.misc)}</td><td>–</td><td></td>`;
+  }
+
+  function renderAccResults(list){
+    accSearchResults.innerHTML = '';
+    if(!list.length){
+      accSearchResults.innerHTML = '<div class="row"><div>No accounts found.</div></div>';
+      return;
+    }
+    list.forEach(({key,a})=>{
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<div><div><strong>${(a && (a.name||key))}</strong></div><div class="meta">${key}</div></div>`;
+      row.addEventListener('click', ()=>{
+        if(!auth.currentUser){ openModal(modalAdmin); modalAdmin.dataset.nextPage='page-search-accounts'; return; }
+        sAccId.value = key;
+        sAccName.value = (a && (a.name||key)) || key;
+        refs.accounts.child(key).child('entries').once('value').then(s=> renderSearchPaymentsTable(s.val()||{}));
+      });
+      accSearchResults.appendChild(row);
+    });
+  }
+
+  function loadAccountsOnce(){
+    return refs.accounts.once('value').then(s=> s.val()||{});
+  }
+
+  const doAccSearch = debounce(()=>{
+    const q = (accSearchInput && accSearchInput.value||'').trim().toLowerCase();
+    if(!q){ if(accSearchResults) accSearchResults.innerHTML=''; return; }
+    loadAccountsOnce().then(accs=>{
+      const arr = Object.entries(accs).map(([key,a])=>({key,a}));
+      const filt = arr.filter(({key,a})=>{
+        const name = (a && (a.name||'')) || '';
+        const hay = (key + ' ' + name).toLowerCase();
+        return hay.includes(q);
+      }).slice(0,50);
+      renderAccResults(filt);
+    });
+  }, 200);
+
+  accSearchInput && accSearchInput.addEventListener('input', doAccSearch);
+  btnClearAccSearch && btnClearAccSearch.addEventListener('click', ()=>{
+    if(accSearchInput) accSearchInput.value='';
+    if(accSearchResults) accSearchResults.innerHTML='';
+    if(searchPaymentsTableBody) searchPaymentsTableBody.innerHTML='';
+    if(searchPaymentsTotals) searchPaymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td>';
+  });
+
 })();
+  function ensureDefaultDate(){ if (peDate && !String(peDate.value||'').trim()) { peDate.value = formatYMDWeek(new Date()); } }
