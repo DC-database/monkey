@@ -33,6 +33,7 @@
     pages.forEach(p=>p.classList.remove('visible'));
     document.getElementById(id).classList.add('visible');
     menuButtons.forEach(b=> b.classList.toggle('active', b.dataset.target===id));
+    try{ if(id==='page-collections' && typeof renderCollectionsNextMonth==='function'){ renderCollectionsNextMonth(); } }catch(e){}
   }
   setActivePage('page-search-accounts');
 
@@ -66,6 +67,8 @@
   const statCurrentBal = document.getElementById('statCurrentBal');
   const statNextDate = document.getElementById('statNextDate');
   const statNextAmount = document.getElementById('statNextAmount');
+  // Collections report refs
+  const collectionsTableBody = document.getElementById('collectionsTableBody');
 
   // User search UI
   const userSearchInput = document.getElementById('userSearchInput');
@@ -178,6 +181,10 @@ function formatYMDWeek(d=new Date()){
   });
   document.getElementById('menuAdminUsers').addEventListener('click', ()=>{
     if(requireAdminOrModal('page-admin-users')) setActivePage('page-admin-users');
+    hideSidebar();
+  });
+  document.getElementById('menuAdminCollections').addEventListener('click', ()=>{
+    if(requireAdminOrModal('page-collections')){ setActivePage('page-collections'); renderCollectionsNextMonth(); }
     hideSidebar();
   });
   
@@ -557,7 +564,59 @@ function refreshPaymentsTable(){
     });
   });
 
-  /* ================= User Search (from /users) ================= */
+  
+  // === Collections Report (Next Month) ===
+  function computeNextFromLastEntry(last){
+    // Base date from 'date' (YYYY-MMM-DD-DDD) else from 'ts'
+    let baseDate = null;
+    if (last && last.date) baseDate = parseYMDMMMDDD(last.date);
+    if (!baseDate && last && last.ts) baseDate = new Date(last.ts);
+    if (!baseDate) baseDate = new Date();
+    const nextDate = addMonths(baseDate, 1);
+    // Amount = credit * previous percent
+    const credit = toNum(('credit' in last) ? last.credit : (last?.initial || 0));
+    let pct = ('percent' in (last||{})) ? toNum(last.percent) : 0;
+    if (!pct && credit){ const pay = toNum(last?.payment || 0); pct = pay ? (pay/credit)*100 : 0; }
+    const amount = credit * (pct/100);
+    return { nextDate, amount };
+  }
+  function renderCollectionsNextMonth(){
+    if (!collectionsTableBody) return;
+    collectionsTableBody.innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
+    // Determine "next month" window
+    const now = new Date();
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth()+1, 1);
+    const nextMonthEnd   = new Date(now.getFullYear(), now.getMonth()+2, 1);
+    const inNextMonth = (d)=> d >= nextMonthStart && d < nextMonthEnd;
+
+    refs.accounts.once('value').then(s=>{
+      const accs = s.val() || {};
+      const rows = [];
+      Object.entries(accs).forEach(([accKey, acc])=>{
+        const entries = (acc && acc.entries) || {};
+        const arr = Object.entries(entries).map(([k,v])=>({k,...v})).sort((a,b)=> (a.ts||0) - (b.ts||0));
+        if (!arr.length) return;
+        const last = arr[arr.length-1];
+        const { nextDate, amount } = computeNextFromLastEntry(last);
+        if (inNextMonth(nextDate)){
+          rows.push({ account: accKey, name: (acc && acc.name) || accKey, amount, date: nextDate });
+        }
+      });
+      rows.sort((a,b)=> a.date - b.date || String(a.account).localeCompare(String(b.account)));
+      if (!rows.length){
+        collectionsTableBody.innerHTML = '<tr><td colspan="5">No collections scheduled for next month.</td></tr>';
+        return;
+      }
+      collectionsTableBody.innerHTML = '';
+      let i = 1;
+      rows.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${i++}</td><td>${r.account}</td><td>${r.name}</td><td>${moneyQ(r.amount||0)}</td><td>${formatYMDWeek(r.date)}</td>`;
+        collectionsTableBody.appendChild(tr);
+      });
+    });
+  }
+/* ================= User Search (from /users) ================= */
   function loadUsersOnce(){
     if(usersCache) return Promise.resolve(usersCache);
     return refs.users.once('value').then(s=>{

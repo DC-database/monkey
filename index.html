@@ -24,6 +24,7 @@
           <div class="sub-menu">
             <button class="menu-item" id="menuAdminPayments" data-target="page-admin-payments">Payment Entries</button>
             <button class="menu-item" id="menuAdminUsers" data-target="page-admin-users">Users</button>
+            <button class="menu-item" id="menuAdminCollections" data-target="page-collections">Collections</button>
           </div>
         </div>
         <button class="menu-item" id="menuSettings" data-target="page-settings">Settings</button>
@@ -192,7 +193,24 @@
         </div>
       </section>
 
-      <section id="page-settings" class="page">
+      
+<section id="page-collections" class="page">
+  <div class="card">
+    <div class="flex-row between"><h2>Collections (Next Month)</h2></div>
+    <div class="table-wrap">
+      <table id="collectionsTable">
+        <thead>
+          <tr><th>#</th><th>Account</th><th>Name</th><th>Amount Collection</th><th>Collection Date</th></tr>
+        </thead>
+        <tbody id="collectionsTableBody">
+          <tr><td colspan="5">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="page-settings" class="page">
         <div class="card"><h2>Settings</h2><p>Use <strong>Search Accounts</strong> (read‑only) or <strong>Admin</strong> (for editing) — login is admin‑only.</p></div>
       </section>
     </main>
