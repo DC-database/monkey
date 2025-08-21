@@ -24,7 +24,6 @@
           <div class="sub-menu">
             <button class="menu-item" id="menuAdminPayments" data-target="page-admin-payments">Payment Entries</button>
             <button class="menu-item" id="menuAdminUsers" data-target="page-admin-users">Users</button>
-            <button class="menu-item" id="menuAdminCollections" data-target="page-collections">Collections</button>
           </div>
         </div>
         <button class="menu-item" id="menuSettings" data-target="page-settings">Settings</button>
@@ -35,7 +34,6 @@
           <div class="btn-row"><button id="btnAdminLogout" class="ghost small">Logout</button></div></div>
 </footer>
     </aside>
-    <div id="sidebarBackdrop" class="backdrop hidden"></div>
 
     <!-- Main content -->
     <main id="content">
@@ -77,11 +75,11 @@
     <div class="table-wrap">
       <table id="searchPaymentsTable">
         <thead>
-          <tr><th>#</th><th>Credit</th><th>Additional</th><th>Payment</th><th>Misc</th><th>Balance</th><th>Percent (%)</th><th>Date</th><th>Notes</th></tr>
+          <tr><th>#</th><th>Credit</th><th>Additional</th><th>Payment</th><th>Misc</th><th>Interest</th><th>Balance</th><th>Collection Date</th><th>Notes</th></tr>
         </thead>
         <tbody></tbody>
         <tfoot>
-          <tr id="searchPaymentsTotals"><td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td>–</td><td></td><td></td></tr>
+          <tr id="searchPaymentsTotals"><td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td><td></td></tr>
         </tfoot>
       </table>
     </div>
@@ -113,6 +111,7 @@
               <div><label>Account ID</label><input id="accId" readonly/></div>
               <div><label>Account Name</label><input id="accName" readonly/></div>
               <div class="align-end">
+                <button id="btnClearSelection" class="ghost">Clear Selection</button>
               </div>
             </div>
           </details>
@@ -131,14 +130,6 @@
     <div class="stat-label">Current Balance</div>
     <div class="stat-value" id="statCurrentBal">QAR 0.00</div>
   </div>
-  <div class="stat">
-    <div class="stat-label">Next Collection Date</div>
-    <div class="stat-value" id="statNextDate">—</div>
-  </div>
-  <div class="stat">
-    <div class="stat-label">Collection Amount</div>
-    <div class="stat-value" id="statNextAmount">QAR 0.00</div>
-  </div>
 </div>
 <details class="card sub" open>
             <summary>Step 3 — Add / Update Payment Entry</summary>
@@ -146,7 +137,6 @@
               <div><label>Credit Amount</label><input id="peCredit" type="number" step="0.01" placeholder="first entry only"/></div>
               <div><label>Additional Amount</label><input id="peAdditional" type="number" step="0.01"/></div>
               <div><label>Payment Made</label><input id="pePayment" type="number" step="0.01"/></div>
-              <div><label>Percentage (%)</label><input id="pePercent" type="number" step="0.01" min="0" max="100" placeholder="e.g., 25"/></div>
               <div><label>Payment Date</label><input id="peDate" type="date"/></div>
               <div><label>Misc</label><input id="peMisc" type="number" step="0.01" placeholder="optional"/></div>
               <div><label>Balance (auto)</label><input id="peBalance" type="number" step="0.01" readonly/></div>
@@ -156,7 +146,7 @@
             <div class="flex-row gap">
               <button id="btnAddEntry" class="primary">Add Entry</button>
               <button id="btnUpdateEntry" class="primary outline" disabled>Update Selected</button>
-              <button id="btnClearEntry" class="ghost">Clear All</button>
+              <button id="btnClearEntry" class="ghost">Clear</button>
             </div>
           </details>
 
@@ -193,24 +183,7 @@
         </div>
       </section>
 
-      
-<section id="page-collections" class="page">
-  <div class="card">
-    <div class="flex-row between"><h2>Collections (Next Month)</h2></div>
-    <div class="table-wrap">
-      <table id="collectionsTable">
-        <thead>
-          <tr><th>#</th><th>Account</th><th>Name</th><th>Amount Collection</th><th>Collection Date</th></tr>
-        </thead>
-        <tbody id="collectionsTableBody">
-          <tr><td colspan="5">Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<section id="page-settings" class="page">
+      <section id="page-settings" class="page">
         <div class="card"><h2>Settings</h2><p>Use <strong>Search Accounts</strong> (read‑only) or <strong>Admin</strong> (for editing) — login is admin‑only.</p></div>
       </section>
     </main>

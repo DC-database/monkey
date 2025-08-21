@@ -9,22 +9,13 @@
   // Connectivity
   db.ref('.info/connected').on('value', snap => { statusDot.classList.toggle('ok', !!snap.val()); });
 
-  // Sidebar toggles with backdrop/safe body
+  // Sidebar toggles
   const sidebar = document.getElementById('sidebar');
   const btnHamburgerTop = document.getElementById('btnHamburgerTop');
-  const backdrop = document.getElementById('sidebarBackdrop');
-  function syncBackdrop(){
-    const isOpen = !sidebar.classList.contains('collapsed');
-    if(backdrop){ backdrop.classList.toggle('show', isOpen); }
-    document.body.classList.toggle('sidebar-open', isOpen);
-  }
-  function toggleSidebar(){ sidebar.classList.toggle('collapsed'); syncBackdrop(); }
-  function hideSidebar(){ sidebar.classList.add('collapsed'); syncBackdrop(); }
-  function showSidebar(){ sidebar.classList.remove('collapsed'); syncBackdrop(); }
+  function toggleSidebar(){ sidebar.classList.toggle('collapsed'); }
+  function hideSidebar(){ sidebar.classList.add('collapsed'); }
+  function showSidebar(){ sidebar.classList.remove('collapsed'); }
   btnHamburgerTop.addEventListener('click', toggleSidebar);
-  backdrop?.addEventListener('click', hideSidebar);
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') hideSidebar(); });
-  document.querySelectorAll('.menu .menu-item').forEach(btn=> btn.addEventListener('click', hideSidebar));
 
   // Navigation
   const pages = document.querySelectorAll('.page');
@@ -33,7 +24,6 @@
     pages.forEach(p=>p.classList.remove('visible'));
     document.getElementById(id).classList.add('visible');
     menuButtons.forEach(b=> b.classList.toggle('active', b.dataset.target===id));
-    try{ if(id==='page-collections' && typeof renderCollectionsNextMonth==='function'){ renderCollectionsNextMonth(); } }catch(e){}
   }
   setActivePage('page-search-accounts');
 
@@ -50,13 +40,11 @@
   const peCredit = document.getElementById('peCredit');
   const peAdditional = document.getElementById('peAdditional');
   const pePayment = document.getElementById('pePayment');
-  const pePercent = document.getElementById('pePercent');
   const peDate = document.getElementById('peDate');
   const peMisc = document.getElementById('peMisc');
   const peBalance = document.getElementById('peBalance');
   const peNotes = document.getElementById('peNotes');
   const btnAddEntry = document.getElementById('btnAddEntry');
-  try{ ensureDefaultDate(); }catch(e){}
   const btnUpdateEntry = document.getElementById('btnUpdateEntry');
   const btnClearEntry = document.getElementById('btnClearEntry');
   const paymentsTable = document.getElementById('paymentsTable');
@@ -65,10 +53,6 @@
   const statTotalAdd = document.getElementById('statTotalAdd');
   const statTotalPay = document.getElementById('statTotalPay');
   const statCurrentBal = document.getElementById('statCurrentBal');
-  const statNextDate = document.getElementById('statNextDate');
-  const statNextAmount = document.getElementById('statNextAmount');
-  // Collections report refs
-  const collectionsTableBody = document.getElementById('collectionsTableBody');
 
   // User search UI
   const userSearchInput = document.getElementById('userSearchInput');
@@ -103,47 +87,23 @@
   const toNum = (x)=>{ if(typeof x==='number') return x||0; if(x==null) return 0; const s=String(x).replace(/[,\s]/g,''); const n=parseFloat(s); return Number.isFinite(n)?n:0; };
   const id = (len=20)=> Array.from(crypto.getRandomValues(new Uint8Array(len))).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,len);
   const debounce = (fn, ms=250)=>{ let t=null; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); }; };
-
-  
-  function formatISODate(d=new Date()){
-    try{
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth()+1).padStart(2,'0');
-      const dd = String(d.getDate()).padStart(2,'0');
-      return `${yyyy}-${mm}-${dd}`;
-    }catch(e){ return ''; }
+  // Date helpers for collection date
+  function addMonths(date, months){
+    const d = new Date(date.getTime());
+    const day = d.getDate();
+    d.setMonth(d.getMonth()+months);
+    // handle month-end rollover
+    if (d.getDate() !== day) d.setDate(0);
+    return d;
   }
-  function parseYMDMMMDDD(str){
-    try{
-      const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-      const m = String(str||'').match(/^(\d{4})-([A-Za-z]{3})-(\d{2})-/);
-      if(!m) return null;
-      const y = +m[1], mon = months[m[2]], day = +m[3];
-      if(mon==null) return null;
-      return new Date(y, mon, day);
-    }catch(e){ return null; }
-  }
-  function ensureDefaultDate(){
-    try{
-      if (peDate){
-        const v = String(peDate.value||'');
-        if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) peDate.value = formatISODate(new Date());
-      }
-    }catch(e){}
-  }
-
-function addMonths(d, months){ try{ return new Date(d.getFullYear(), d.getMonth()+months, d.getDate()); }catch(e){ return d; } }
-
-function formatYMDWeek(d=new Date()){
-    try{
-      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-      const yyyy = d.getFullYear();
-      const mmm = months[d.getMonth()];
-      const dd = String(d.getDate()).padStart(2,'0');
-      const ddd = days[d.getDay()];
-      return `${yyyy}-${mmm}-${dd}-${ddd}`;
-    }catch(e){ return ''; }
+  function formatYMDWeek(d){
+    const MMM = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const DDD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const yyyy = d.getFullYear();
+    const mmm = MMM[d.getMonth()];
+    const dd  = String(d.getDate()).padStart(2,'0');
+    const wk  = DDD[d.getDay()];
+    return `${yyyy}-${mmm}-${dd}-${wk}`;
   }
 
 
@@ -183,10 +143,6 @@ function formatYMDWeek(d=new Date()){
     if(requireAdminOrModal('page-admin-users')) setActivePage('page-admin-users');
     hideSidebar();
   });
-  document.getElementById('menuAdminCollections').addEventListener('click', ()=>{
-    if(requireAdminOrModal('page-collections')){ setActivePage('page-collections'); renderCollectionsNextMonth(); }
-    hideSidebar();
-  });
   
   document.getElementById('menuSearchAccounts').addEventListener('click', ()=>{
     setActivePage('page-search-accounts'); hideSidebar();
@@ -194,7 +150,6 @@ function formatYMDWeek(d=new Date()){
 
   document.getElementById('menuSettings').addEventListener('click', ()=>{ setActivePage('page-settings'); hideSidebar(); });
   // Bottom tab bar routing
-
   const tab = id=>document.getElementById(id);
   const activateTab = (id)=>{ document.querySelectorAll('#tabbar .tab').forEach(b=>b.classList.remove('active')); const el = document.getElementById(id); if(el) el.classList.add('active'); };
   tab('tabSearch')?.addEventListener('click', ()=>{ setActivePage('page-search-accounts'); activateTab('tabSearch'); });
@@ -204,69 +159,7 @@ function formatYMDWeek(d=new Date()){
   // default active tab
   activateTab('tabSearch');
 
-  
-// === Bottom tabbar: robust attach on DOM ready ===
-(function(){
-  function install(){
-    if (window.__tabbarDelegated) return true;
-    const tabbar = document.getElementById('tabbar');
-    if (!tabbar) return false;
-    window.__tabbarDelegated = true;
-
-    const activateTab = (id)=>{
-      try{
-        document.querySelectorAll('#tabbar .tab').forEach(b=>b.classList.remove('active'));
-        const el = document.getElementById(id);
-        if (el) el.classList.add('active');
-      }catch(e){}
-    };
-
-    const handle = (evt)=>{
-      const btn = evt.target && evt.target.closest ? evt.target.closest('button.tab') : null;
-      if (!btn) return;
-      evt.preventDefault();
-      const target = btn.getAttribute('data-target');
-      // Fallback targets by id
-      const idMap = {
-        'tabSearch': 'page-search-accounts',
-        'tabPayments': 'page-admin-payments',
-        'tabUsers': 'page-admin-users',
-        'tabSettings': 'page-settings'
-      };
-      const goto = target || idMap[btn.id];
-      if (!goto) return;
-
-      if (goto === 'page-admin-payments' || goto === 'page-admin-users'){
-        if (!requireAdminOrModal(goto)) return;
-      }
-      setActivePage(goto);
-      activateTab(btn.id);
-    };
-
-    tabbar.addEventListener('click', handle, {passive:false});
-    tabbar.addEventListener('touchstart', handle, {passive:false});
-
-    // Also attach direct listeners if buttons exist (for redundancy)
-    const tab = id=>document.getElementById(id);
-    tab('tabSearch')?.addEventListener('click', ()=>{ setActivePage('page-search-accounts'); activateTab('tabSearch'); });
-    tab('tabPayments')?.addEventListener('click', ()=>{ if(requireAdminOrModal('page-admin-payments')){ setActivePage('page-admin-payments'); activateTab('tabPayments'); } });
-    tab('tabUsers')?.addEventListener('click', ()=>{ if(requireAdminOrModal('page-admin-users')){ setActivePage('page-admin-users'); activateTab('tabUsers'); } });
-    tab('tabSettings')?.addEventListener('click', ()=>{ setActivePage('page-settings'); activateTab('tabSettings'); });
-
-    return true;
-  }
-
-  if (!install()){
-    const ready = ()=>{ if (!install()) setTimeout(ready, 80); };
-    if (document.readyState === 'loading'){
-document.addEventListener('DOMContentLoaded', ready, {once:true});
-      window.addEventListener('load', ready, {once:true});
-    } else {
-      ready();
-    }
-  }
-})();
-function updateAdminState(){
+  function updateAdminState(){
     const isIn = !!auth.currentUser;
     adminAuthState.textContent = isIn ? 'Signed in' : 'Signed out';
     adminAuthState.classList.toggle('ok', isIn);
@@ -315,9 +208,7 @@ function renderPaymentsTable(entries){
     if(arr.length===0){
       paymentsTableBody.innerHTML='<tr><td colspan="8">No entries yet.</td></tr>';
       paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td></td><td></td>';
-          // Reset stat cards on Clear All
-    try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); if (statNextDate) statNextDate.textContent='—'; if (statNextAmount) statNextAmount.textContent = moneyQ(0); } catch(e) {}
-return;
+      return;
     }
     let idx=1;
     let sum = { add:0, pay:0, misc:0 };
@@ -346,38 +237,12 @@ return;
       if (statTotalAdd && statTotalPay && statCurrentBal) {
         const last = arr.length ? arr[arr.length-1] : null;
         const lastBal = last ? (('balance' in last && last.balance!==undefined) ? last.balance : (toNum(('credit' in last)?last.credit:(last.initial||0)) + toNum(last.additional||0) - toNum(last.payment||0))) : 0;
-        statTotalAdd.textContent = moneyQ((function(){ const first = arr.length ? arr[0] : null; const firstCredit = first ? toNum(('credit' in first) ? first.credit : (first.initial || 0)) : 0; return firstCredit + (sum.add || 0); })());
+        statTotalAdd.textContent = moneyQ(sum.add || 0);
         statTotalPay.textContent = moneyQ(sum.pay || 0);
         statCurrentBal.textContent = moneyQ(lastBal || 0);
       }
     } catch(e) {}
-    
-    // Next Collection Date & Collection Amount
-    try{
-      if (Array.isArray(arr) && arr.length){
-        const last = arr[arr.length-1];
-        // Base = last payment date (preferred), else ts, else today
-        let baseDate = null;
-        if (last.date) baseDate = parseYMDMMMDDD(last.date);
-        if (!baseDate && last.ts) baseDate = new Date(last.ts);
-        if (!baseDate) baseDate = new Date();
-        const nextDate = addMonths(baseDate, 1);
-        if (statNextDate) statNextDate.textContent = formatYMDWeek(nextDate);
-
-        // Collection Amount = credit x previous percent
-        const credit = toNum(('credit' in last) ? last.credit : (last.initial || 0));
-        let prevPct = ('percent' in last) ? toNum(last.percent) : 0;
-        if (!prevPct && credit) {
-          const lastPay = toNum(last.payment || 0);
-          prevPct = lastPay ? (lastPay / credit) * 100 : 0;
-        }
-        const collAmt = credit * (prevPct/100);
-        if (statNextAmount) statNextAmount.textContent = moneyQ(collAmt);
-      } else {
-        if (statNextDate) statNextDate.textContent = '—';
-        if (statNextAmount) statNextAmount.textContent = moneyQ(0);
-      }
-    }catch(e){}// after render, set default credit
+    // after render, set default credit
     setCreditDefaultForAdd(arr);
   }
 
@@ -386,8 +251,7 @@ function refreshPaymentsTable(){
 
   function refreshPaymentsTable(){
     const key = accId.value.trim();
-    if(!key){ paymentsTableBody.innerHTML='<tr><td colspan="8">Select an account via User Search.</td></tr>'; paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td></td><td></td>'; try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); if (statNextDate) statNextDate.textContent='—'; if (statNextAmount) statNextAmount.textContent = moneyQ(0); } catch(e) {}
-    return; }
+    if(!key){ paymentsTableBody.innerHTML='<tr><td colspan="8">Select an account via User Search.</td></tr>'; paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td></td><td></td>'; return; }
     getEntriesOnce(key).then(renderPaymentsTable);
   }
 
@@ -416,115 +280,89 @@ function refreshPaymentsTable(){
     }
   }
 
-  
-  function recalcPaymentFromPercent(){
-    if(!pePercent) return;
-    const pct = toNum(pePercent.value);
-    const credit = toNum(peCredit.value);
-    if(Number.isFinite(pct) && Number.isFinite(credit)){
-      const pay = (credit * pct) / 100;
-      pePayment.value = (Number.isFinite(pay)?pay:0).toFixed(2);
-    }
-    recalcBalance();
-  }
-
   function recalcBalance(){
-    const credit = toNum(peCredit.value);
-    const add = toNum(peAdditional.value);
-    const pay = toNum(pePayment.value);
-    const bal = credit + add - pay;
-    peBalance.value = (Number.isFinite(bal)?bal:0).toFixed(2);
-  }
+  const credit = toNum(peCredit.value);
+  const add = toNum(peAdditional.value);
+  const pay = toNum(pePayment.value);
+  const interest = (credit + add) * 0.10;
+  const bal = (credit + add - pay) + interest;
+  peBalance.value = (Number.isFinite(bal)?bal:0).toFixed(2);
+}
 
   ['input','change'].forEach(evt => {
     [peCredit, peAdditional, pePayment].forEach(el => el.addEventListener(evt, recalcBalance));
   });
 
-  // Update payment when percent or credit changes
-  ;['input','change'].forEach(evt => {
-    if (pePercent) pePercent.addEventListener(evt, recalcPaymentFromPercent);
-    if (peCredit) peCredit.addEventListener(evt, recalcPaymentFromPercent);
-  });
-
-  if (btnClearSelection) btnClearSelection.addEventListener('click', ()=>{
+  btnClearSelection.addEventListener('click', ()=>{
     accId.value='';
     accName.value='';
     paymentsTableBody.innerHTML='<tr><td colspan="8">Select an account via User Search.</td></tr>';
     paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td></td><td></td>';
     peCredit.value=''; peCredit.readOnly=false; peCredit.placeholder='first entry only';
-    [peAdditional, pePayment, peMisc, peBalance, peNotes].forEach(i=> i.value=''); if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); }
+    [peAdditional, pePayment, peMisc, peBalance, peNotes].forEach(i=> i.value=''); if (typeof peDate!=='undefined' && peDate) peDate.value='';
     selectedPaymentKey=null; btnUpdateEntry.disabled=true;
   });
 
   function clearPaymentForm(){
-    [peAdditional, pePayment, peMisc, peBalance, peNotes].forEach(i=> i.value=''); if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); }
+    [peAdditional, pePayment, peMisc, peBalance, peNotes].forEach(i=> i.value=''); if (typeof peDate!=='undefined' && peDate) peDate.value='';
     selectedPaymentKey = null;
     btnUpdateEntry.disabled = true;
     Array.from(paymentsTableBody.querySelectorAll('tr')).forEach(tr=>tr.classList.remove('active'));
     refreshPaymentsTable(); // will reset credit default
   }
-
-  function clearAllSelectionAndForm(){
-    // Clear selected account
-    accId.value='';
-    accName.value='';
-    // Reset payments table & totals to default message
-    paymentsTableBody.innerHTML='<tr><td colspan="8">Select an account via User Search.</td></tr>';
-    paymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td></td><td></td>';
-        try { statTotalAdd.textContent = moneyQ(0); statTotalPay.textContent = moneyQ(0); statCurrentBal.textContent = moneyQ(0); if (statNextDate) statNextDate.textContent='—'; if (statNextAmount) statNextAmount.textContent = moneyQ(0); } catch(e) {}
-    // Reset form fields & credit field to editable
-    peCredit.value=''; peCredit.readOnly=false; peCredit.placeholder='first entry only';
-    [peAdditional, pePayment, peMisc, peBalance, peNotes].forEach(i=> i.value=''); if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); } if (pePercent) pePercent.value=''; if (peDate) { peDate.value=''; ensureDefaultDate(); }
-    selectedPaymentKey=null; btnUpdateEntry.disabled=true;
-    // Also clear any user search UI rows so we are "back to Step 1"
-    if (userSearchResults) userSearchResults.innerHTML='';
-    if (userSearchInput) { try { userSearchInput.focus(); } catch(e){} }
-  }
-
-  // Step 3 'Clear All' now resets selection & table and focuses Step 1 search
-  btnClearEntry.addEventListener('click', ()=>{ clearAllSelectionAndForm(); setActivePage('page-admin-payments'); });
+  btnClearEntry.addEventListener('click', clearPaymentForm);
 
   btnAddEntry.addEventListener('click', ()=>{
-    if(!auth.currentUser){ openModal(modalAdmin); modalAdmin.dataset.nextPage='page-admin-payments'; return; }
+if(!auth.currentUser){ openModal(modalAdmin); modalAdmin.dataset.nextPage='page-admin-payments'; return; }
     const key = accId.value.trim();
     if(!key) return alert('Pick an account via User Search first');
     if(!peBalance.value) recalcBalance();
-    ensureDefaultDate();
-    const payload = {
-      credit: +(peCredit.value||0),
-      additional: +(peAdditional.value||0),
-      payment: +(pePayment.value||0),
-      misc: +(peMisc.value||0),
-      balance: +(peBalance.value||0),
-      percent: +(pePercent ? (pePercent.value||0) : 0),
-      date: (peDate && peDate.value) ? formatYMDWeek(new Date(peDate.value)) : formatYMDWeek(new Date()),
-      notes: peNotes.value||'',
-      ts: Date.now(),
-      initial: +(peCredit.value||0) // legacy
-    };
+    const __ts = Date.now();
+    const paymentDateStr = (peDate && peDate.value) ? formatYMDWeek(new Date(peDate.value)) : '';
+    const __collectionDate = paymentDateStr ? formatYMDWeek(addMonths(new Date(peDate.value), 1)) : formatYMDWeek(addMonths(new Date(__ts), 1));
+const baseAmt = toNum(peCredit.value||0) + toNum(peAdditional.value||0);
+const interest = baseAmt * 0.10;
+const payload = {
+  credit: +(peCredit.value||0),
+  additional: +(peAdditional.value||0),
+  payment: +(pePayment.value||0),
+  misc: +(peMisc.value||0),
+  interest: +(interest||0),
+  balance: +(((toNum(peCredit.value||0)+toNum(peAdditional.value||0) - toNum(pePayment.value||0)) + interest) || 0),
+  notes: peNotes.value||'',
+  date: paymentDateStr,
+  date: paymentDateStrU,
+  ts: __tsU,
+  collectionDate: __collectionDateU,
+  initial: +(peCredit.value||0) // legacy
+};
     db.ref('accounts/'+key+'/entries/'+id(16)).set(payload);
     clearPaymentForm();
   });
 
   btnUpdateEntry.addEventListener('click', ()=>{
-    if(!auth.currentUser){ openModal(modalAdmin); modalAdmin.dataset.nextPage='page-admin-payments'; return; }
+if(!auth.currentUser){ openModal(modalAdmin); modalAdmin.dataset.nextPage='page-admin-payments'; return; }
     const key = accId.value.trim();
     if(!key || !selectedPaymentKey) return;
     if(!peBalance.value) recalcBalance();
-    ensureDefaultDate();
-    ensureDefaultDate();
-    const payload = {
-      credit: +(peCredit.value||0),
-      additional: +(peAdditional.value||0),
-      payment: +(pePayment.value||0),
-      misc: +(peMisc.value||0),
-      balance: +(peBalance.value||0),
-      percent: +(pePercent ? (pePercent.value||0) : 0),
-      date: (peDate && peDate.value) ? formatYMDWeek(new Date(peDate.value)) : formatYMDWeek(new Date()),
-      notes: peNotes.value||'',
-      ts: Date.now(),
-      initial: +(peCredit.value||0) // legacy
-    };
+    const __tsU = Date.now();
+    const paymentDateStrU = (peDate && peDate.value) ? formatYMDWeek(new Date(peDate.value)) : '';
+    const __collectionDateU = paymentDateStrU ? formatYMDWeek(addMonths(new Date(peDate.value), 1)) : formatYMDWeek(addMonths(new Date(__tsU), 1));
+const baseAmt = toNum(peCredit.value||0) + toNum(peAdditional.value||0);
+const interest = baseAmt * 0.10;
+const payload = {
+  credit: +(peCredit.value||0),
+  additional: +(peAdditional.value||0),
+  payment: +(pePayment.value||0),
+  misc: +(peMisc.value||0),
+  interest: +(interest||0),
+  balance: +(((toNum(peCredit.value||0)+toNum(peAdditional.value||0) - toNum(pePayment.value||0)) + interest) || 0),
+  notes: peNotes.value||'',
+  date: paymentDateStrU,
+  ts: __tsU,
+  collectionDate: __collectionDateU,
+  initial: +(peCredit.value||0) // legacy
+};
     db.ref('accounts/'+key+'/entries/'+selectedPaymentKey).update(payload);
     clearPaymentForm();
   });
@@ -554,8 +392,13 @@ function refreshPaymentsTable(){
       peMisc.value = v.misc || '';
       peBalance.value = money(v.balance||0);
       peNotes.value = v.notes || '';
-      if (pePercent) pePercent.value = (('percent' in v) ? v.percent : (toNum(v.payment||0) && toNum(credit||0) ? ((toNum(v.payment)/toNum(credit))*100).toFixed(2) : ''));
-      if (peDate){ let dt=null; if (v.date) dt = parseYMDMMMDDD(v.date); if(!dt && v.ts) dt = new Date(v.ts); if(!dt) dt = new Date(); peDate.value = formatISODate(dt); }
+      // Populate Payment Date input if saved 'date' exists
+      try{
+        if(peDate){
+          const d = v.date ? parseYMDMMMDDD(v.date) : null;
+          peDate.value = d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
+        }
+      }catch(e){}
       selectedPaymentKey = rowKey;
       btnUpdateEntry.disabled = false;
       Array.from(paymentsTableBody.querySelectorAll('tr')).forEach(x=>x.classList.remove('active'));
@@ -564,59 +407,7 @@ function refreshPaymentsTable(){
     });
   });
 
-  
-  // === Collections Report (Next Month) ===
-  function computeNextFromLastEntry(last){
-    // Base date from 'date' (YYYY-MMM-DD-DDD) else from 'ts'
-    let baseDate = null;
-    if (last && last.date) baseDate = parseYMDMMMDDD(last.date);
-    if (!baseDate && last && last.ts) baseDate = new Date(last.ts);
-    if (!baseDate) baseDate = new Date();
-    const nextDate = addMonths(baseDate, 1);
-    // Amount = credit * previous percent
-    const credit = toNum(('credit' in last) ? last.credit : (last?.initial || 0));
-    let pct = ('percent' in (last||{})) ? toNum(last.percent) : 0;
-    if (!pct && credit){ const pay = toNum(last?.payment || 0); pct = pay ? (pay/credit)*100 : 0; }
-    const amount = credit * (pct/100);
-    return { nextDate, amount };
-  }
-  function renderCollectionsNextMonth(){
-    if (!collectionsTableBody) return;
-    collectionsTableBody.innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
-    // Determine "next month" window
-    const now = new Date();
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth()+1, 1);
-    const nextMonthEnd   = new Date(now.getFullYear(), now.getMonth()+2, 1);
-    const inNextMonth = (d)=> d >= nextMonthStart && d < nextMonthEnd;
-
-    refs.accounts.once('value').then(s=>{
-      const accs = s.val() || {};
-      const rows = [];
-      Object.entries(accs).forEach(([accKey, acc])=>{
-        const entries = (acc && acc.entries) || {};
-        const arr = Object.entries(entries).map(([k,v])=>({k,...v})).sort((a,b)=> (a.ts||0) - (b.ts||0));
-        if (!arr.length) return;
-        const last = arr[arr.length-1];
-        const { nextDate, amount } = computeNextFromLastEntry(last);
-        if (inNextMonth(nextDate)){
-          rows.push({ account: accKey, name: (acc && acc.name) || accKey, amount, date: nextDate });
-        }
-      });
-      rows.sort((a,b)=> a.date - b.date || String(a.account).localeCompare(String(b.account)));
-      if (!rows.length){
-        collectionsTableBody.innerHTML = '<tr><td colspan="5">No collections scheduled for next month.</td></tr>';
-        return;
-      }
-      collectionsTableBody.innerHTML = '';
-      let i = 1;
-      rows.forEach(r=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${i++}</td><td>${r.account}</td><td>${r.name}</td><td>${moneyQ(r.amount||0)}</td><td>${formatYMDWeek(r.date)}</td>`;
-        collectionsTableBody.appendChild(tr);
-      });
-    });
-  }
-/* ================= User Search (from /users) ================= */
+  /* ================= User Search (from /users) ================= */
   function loadUsersOnce(){
     if(usersCache) return Promise.resolve(usersCache);
     return refs.users.once('value').then(s=>{
@@ -733,8 +524,6 @@ function refreshPaymentsTable(){
   });
   btnAddUser.addEventListener('click', ()=>{
     if(!auth.currentUser){ openModal(modalAdmin); modalAdmin.dataset.nextPage='page-admin-users'; return; }
-    ensureDefaultDate();
-    ensureDefaultDate();
     const payload = { accountId: uAccId.value.trim(), accountName: uAccName.value.trim(), role: (uRole.value||'user'), email: uEmail.value.trim(), mobile: uMobile.value.trim(), password: uPassword.value.trim() };
     if(!payload.accountId || !payload.accountName) return alert('Account ID & Name required');
     refs.users.child(id(16)).set(payload);
@@ -762,20 +551,30 @@ function refreshPaymentsTable(){
     const arr = Object.entries(entries || {}).map(([k,v])=>({k, ...v})).sort((a,b)=> (a.ts||0)-(b.ts||0));
     if(arr.length===0){
       searchPaymentsTableBody.innerHTML='<tr><td colspan="9">No entries yet.</td></tr>';
-      searchPaymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td>–</td><td></td><td></td>';
+      searchPaymentsTotals.innerHTML=`<td>Σ</td><td>–</td><td>${money(sum.add)}</td><td>${money(sum.pay)}</td><td>${money(sum.misc)}</td><td>${money(sum.int||0)}</td><td>–</td><td></td>`;
       return;
     }
-    let i=1; let sum={add:0, pay:0, misc:0};
+    let i=1; let sum={add:0, pay:0, misc:0, int:0};
     arr.forEach(v=>{
       const credit = ('credit' in v) ? v.credit : (v.initial || 0);
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${i++}</td><td>${money(credit||0)}</td><td>${money(v.additional||0)}</td><td>${money(v.payment||0)}</td><td>${money(v.misc||0)}</td><td>${money(('balance' in v && v.balance!==undefined) ? v.balance : ((credit + toNum(v.additional||0) + toNum(v.misc||0)) - toNum(v.payment||0)))}</td><td>${('percent' in v) ? (toNum(v.percent).toFixed(2) + '%') : (toNum(v.payment||0)&&toNum(credit||0) ? ((toNum(v.payment)/toNum(credit))*100).toFixed(2)+'%' : '')}</td><td>${v.date || (v.ts ? formatYMDWeek(new Date(v.ts)) : '')}</td><td>${(v.notes||'')}</td>`;
+      tr.innerHTML = `<td>${i++}</td>`+
+`<td>${money(credit||0)}</td>`+
+`<td>${money(v.additional||0)}</td>`+
+`<td>${money(v.payment||0)}</td>`+
+`<td>${money(v.misc||0)}</td>`+
+`<td>${money((('interest' in v) ? v.interest : ((toNum(credit||0) + toNum(v.additional||0)) * 0.10)))}</td>`+
+`<td>${money((('balance' in v && v.balance!==undefined) ? v.balance : ((toNum(credit||0) + toNum(v.additional||0) - toNum(v.payment||0)) * 1.10)))}</td>`+
+`<td>${ v.collectionDate || (v.ts ? formatYMDWeek(addMonths(new Date(v.ts),1)) : '')}</td>`+
+`<td>${(v.notes||'')}</td>`;
       searchPaymentsTableBody.appendChild(tr);
       sum.add += +(v.additional||0);
       sum.pay += +(v.payment||0);
       sum.misc += +(v.misc||0);
+    const baseForInt = toNum(credit||0) + toNum(v.additional||0);
+    sum.int += (baseForInt * 0.10);
     });
-    searchPaymentsTotals.innerHTML = `<td>Σ</td><td>–</td><td>${money(sum.add)}</td><td>${money(sum.pay)}</td><td>${money(sum.misc)}</td><td>–</td><td></td>`;
+    searchPaymentsTotals.innerHTML = `<td>Σ</td><td>–</td><td>${money(sum.add)}</td><td>${money(sum.pay)}</td><td>${money(sum.misc)}</td><td>–</td><td></td><td></td>`;
   }
 
   function renderAccResults(list){
@@ -821,20 +620,19 @@ function refreshPaymentsTable(){
     if(accSearchInput) accSearchInput.value='';
     if(accSearchResults) accSearchResults.innerHTML='';
     if(searchPaymentsTableBody) searchPaymentsTableBody.innerHTML='';
-    if(searchPaymentsTotals) searchPaymentsTotals.innerHTML='<td>Σ</td><td>–</td><td>0.00</td><td>0.00</td><td>0.00</td><td>–</td><td>–</td><td></td><td></td>';
+    if(searchPaymentsTotals) searchPaymentsTotals.innerHTML=`<td>Σ</td><td>–</td><td>${money(sum.add)}</td><td>${money(sum.pay)}</td><td>${money(sum.misc)}</td><td>${money(sum.int||0)}</td><td>–</td><td></td>`;
   });
 
 })();
-  function ensureDefaultDate(){ if (peDate && !String(peDate.value||'').trim()) { peDate.value = formatYMDWeek(new Date()); } }
-
-try{
-  const vv = window.visualViewport;
-  const kbThreshold = 140;
-  if(vv){
-    let base = vv.height;
-    vv.addEventListener('resize', ()=>{
-      const open = (base - vv.height) > kbThreshold;
-      document.body.classList.toggle('keyboard-open', open);
-    });
-  }
-}catch(e){}
+function parseYMDMMMDDD(str){
+  // "YYYY-MMM-DD-DDD" -> Date
+  if(!str) return null;
+  const parts = String(str).split('-');
+  if(parts.length < 4) return null;
+  const y = parseInt(parts[0],10);
+  const MMM = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const m = MMM.indexOf(parts[1]);
+  const d = parseInt(parts[2],10);
+  if(y && m>=0 && d) return new Date(y, m, d);
+  return null;
+}
